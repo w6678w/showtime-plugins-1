@@ -30,6 +30,14 @@
                     plugin.path + "logo.png",
                     plugin_info.synopsis);
 
+    settings.createDivider('Browser Settings');
+
+    settings.createInt("maximumNumberPages", "Maximum number of pages to show each time", 7, 1, 15, 1, '', function(v) {
+        service.maximumNumberPages = v;
+    });
+
+    settings.createDivider('Video Playback');
+
     settings.createBool("video_hd", "Enable HD Playback", true, function (v) {
         service.video_hd = v;
     });
@@ -104,7 +112,7 @@
                 page.loading = false;
                 num += c;
                 offset++;
-                if(c == 0 || !has_nextpage)
+                if(c == 0 || !has_nextpage || offset > service.maximumNumberPages)
                     break;
             }
             offset += num;
@@ -164,7 +172,7 @@
                 page.loading = false;
                 num += c;
                 offset++;
-                if(c == 0 || !has_nextpage)
+                if(c == 0 || !has_nextpage || offset > service.maximumNumberPages)
                     break;
             }
             offset += num;

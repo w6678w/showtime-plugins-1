@@ -3,7 +3,7 @@
 	"id": "gametrailers",
 	"file": "gametrailers.js",
 	"showtimeVersion": "4.1",
-        "version": "0.4",
+        "version": "0.5",
         "author": "Fábio Ferreira (facanferff)",
         "title": "GameTrailers",
         "icon": "logo.png",
