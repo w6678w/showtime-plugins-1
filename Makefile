@@ -1,6 +1,7 @@
 
 PLUGINS= \
-	channel9.zip
+	channel9.zip \
+	watchtv.zip
 
 %.zip:
 	@echo "Bundle plugin '$*'"
