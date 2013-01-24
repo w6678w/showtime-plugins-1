@@ -1,0 +1,13 @@
+{
+	"type": "javascript",
+	"id": "videocopilot",
+	"file": "videocopilot.js",
+	"showtimeVersion": "3.5.212",
+    "version": "0.9",
+    "author": "Fábio Ferreira (facanferff)",
+    "title": "Video Copilot",
+    "icon": "logo.png",
+    "synopsis": "Video Copilot: Tutorials for After Effects",
+    "description": "<p>Learning advanced techniques in Adobe After Effects was never been so easy.<p>",
+    "homepage":"https://github.com/facanferff/showtime-plugin-youtube"
+}
