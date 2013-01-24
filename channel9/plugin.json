@@ -1,0 +1,12 @@
+{
+	"type": "javascript",
+	"id": "channel9",
+	"file": "channel9.js",
+	"showtimeVersion": "3.2",
+        "version": "1.3",
+        "author": "Fábio Canada (facanferff)",
+        "title": "Channel9",
+        "icon": "logo.png",
+        "synopsis": "Channel 9",
+        "description": "<p>Videos about the products from Microsoft.<p>"
+}
