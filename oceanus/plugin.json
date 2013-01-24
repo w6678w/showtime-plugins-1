@@ -1,0 +1,24 @@
+{
+	"description": "<p>The first skin ever created for Showtime.<p>", 
+	"author": "F\u00e1bio Ferreira (facanferff)", 
+	"homepage": "", 
+	"title": "Oceanus", 
+	"synopsis": "First skin plugin", 
+	"description": "Oceanus is the first ever skin plugin to be created for Showtime Media Center. From the same creator (facanferff) of Youtube and Navi-X plugins.",
+	"version": "1.0", 
+	"showtimeVersion": "4.1", 
+	"type": "views", 
+	"id": "oceanus", 
+	"icon": "logo.jpg", 
+	"category": "glwview", 
+	"glwviews": [
+		{ "file": "views/list2.view", "title": "List 2", "class": "directory" }, 
+		{ "file": "views/list.view", "title": "List", "class": "directory" }, 
+		{ "file": "views/shift.view", "title": "Shift", "class": "album" }, 
+		{ "file": "views/coverflow.view", "title": "Coverflow", "class": "directory" }, 
+		{ "file": "views/posters.view", "title": "Posters", "class": "movies" }, 
+		{ "file": "views/posters.view", "title": "Posters", "class": "directory" }, 
+		{ "file": "views/posters.view", "title": "Posters", "class": "artists" }, 
+		{ "file": "views/array.view", "title": "Array", "class": "directory" }
+	]
+}

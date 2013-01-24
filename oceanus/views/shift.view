@@ -1,0 +1,116 @@
+#import "common.view"
+
+	widget(container_y, {
+	// Top Bar
+	widget(loader, {
+		hidden: !count($page.model.actions);
+		.source = "header.view";
+	});
+
+	$page.glw.background = $clone.focused.metadata.background ?? $page.model.metadata.background/* ?? "img/background.png"*/;
+
+	widget(container_y, {
+		padding: $ui.size * 2;
+
+		widget(container_x, {
+			widget(container_z, {
+				widget(stencil, {
+	    					source: "skin://graphics/stencil.png";
+	    					width: $ui.size * 8;
+	    					height: $ui.size * 8;
+	    					widget(container_z, {
+	      						widget(quad, {
+									color: 0;
+									alpha: 0.5;
+	      						});
+	      
+	      						widget(frontdrop, {
+									align: bottom;
+									$clone.ready = isReady();
+									source: $page.model.metadata.album_art ?? "img/nophoto.png";
+									color: isFocused() + 0.5;
+									alpha: 0.7 + 0.2 * isFocused();
+	      						});
+	    					});
+	  					});
+	  
+	 					widget(backdrop, {
+	    					source: "skin://graphics/border32.png";
+	    					border: 16;
+	    					alpha: iir(isFocused(), 8) + 0.1;
+	  					});
+			});
+		});
+
+		widget(dummy, {
+			height: $ui.size  * 4;
+		});
+
+		widget(fader, {
+    		filterConstraintY: true;
+    		weight: 1;
+    		plane: [0,1,0,1];
+    		alphaFallOff: 1;
+    		blurFallOff: 0.2;
+    		widget(mirror, {
+      			alpha: 0.4;
+
+      			widget(list_x, {
+					spacing: 5;
+
+					scrollThreshold: $ui.width / 10;
+
+	
+					&clone.focused = focusedChild();
+	
+					cloner($page.model.nodes, container_z, {
+	  					autoRefocusable: true;
+	  					focusable: true;
+	  					width: $ui.width  / 7;
+	  					$clone.fd = focusDistance();
+
+	  					onEvent(activate, navOpen($self.url, void, void, $parent.model));
+
+	  					widget(stencil, {
+	    					source: "skin://graphics/stencil.png";
+	    					widget(container_z, {
+	      						widget(quad, {
+									color: 0;
+									alpha: 0.5;
+	      						});
+	      
+	      						widget(frontdrop, {
+									align: bottom;
+									width: $ui.size * 12;
+									$clone.ready = isReady();
+									source: $self.metadata.icon;
+									color: isFocused() + 0.5;
+									alpha: 0.7 + 0.2 * isFocused();
+	      						});
+	    					});
+	  					});
+	  
+	 					widget(backdrop, {
+	    					source: "skin://graphics/border32.png";
+	    					border: 16;
+	    					alpha: iir(isFocused(), 8) + 0.1;
+	  					});
+					});
+      			});
+    		});
+  		});
+  		});
+
+		widget(label, {
+			padding: [$ui.size * 2, 0, $ui.size * 2, $ui.size / 2];
+			caption: $clone.focused.metadata.title;
+			TextStyleItem();
+			sizeScale: 2.7;
+			color: 0.7;
+			bold: true;
+		});
+
+		widget(dummy, {
+			height: $ui.size * 2;
+		});
+	});

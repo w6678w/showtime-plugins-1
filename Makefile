@@ -6,7 +6,8 @@ PLUGINS= \
 	khanacademy.zip \
 	videocopilot.zip \
 	gametrailers.zip \
-	navi-x.zip
+	navi-x.zip \
+	oceanus.zip
 
 %.zip:
 	@echo "Bundle plugin '$*'"

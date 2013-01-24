@@ -1,0 +1,67 @@
+#include "common.view"
+
+widget(container_y, {
+	//.hidden = !count($page.model.actions);
+	widget(frontdrop, {
+		source: "img/infobar.png";
+		.height = $ui.height * 1/15;
+		border: 4;
+
+		widget(container_x, {
+		widget(list_x, {
+			.spacing = 5;
+			&clone.focused = focusedChild();
+			$view.change = changed($clone.focused, 1);
+
+			cloner($page.model.actions, container_z, {
+				hidden: ($self.metadata.search || $self.metadata.align == "right");
+				focusable: 0.5;
+				focusOnClick: true;
+
+				widget(image, {
+					.source = $self.metadata.icon;
+					.color = 0.3 + isHovered() * 0.6 + isFocused() * 0.6 + isPressed() * 0.6;
+				});
+
+				onEvent(activate,
+					translate($self.type, void,
+						"pageevent", deliverEvent($page.eventSink, $self.data),
+						"navopen", navOpen($self.data)
+				));
+			});
+		});
+
+			widget(container_x, {
+			widget(image, {
+					hidden: !($clone.focused.metadata.hd);
+					width: $ui.size * 2;
+					source: "img/hd1.png";
+				});
+				widget(label, {
+					caption: " " + $clone.focused.metadata.title;
+					TextStyleItem();
+					sizeScale: 1.3;
+				});
+
+				widget(label, {
+					hidden: !($clone.focused.metadata.likesPercentage_str);
+					TextStyleItem();
+					caption: $clone.focused.metadata.likesPercentage_str;
+				});
+			});
+
+			/*widget(container_x, {
+				width: $ui.size * 3;
+				focusable: 0.5;
+				focusOnClick: true;
+
+				widget(image, {
+					.source = "img/exit.png";
+					.color = 0.3 + isHovered() * 0.6 + isFocused() * 0.6 + isPressed() * 0.6;
+				});
+
+				onEvent(activate, event(Quit));
+			});*/
+		});
+	});
+});

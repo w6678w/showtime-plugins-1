@@ -1,0 +1,148 @@
+#import "common.view"
+
+	widget(container_y, {
+
+	// Top Bar
+	widget(loader, {
+		hidden: !count($page.model.actions);
+		.source = "header.view";
+	});
+
+widget(container_y, {
+	padding: $ui.size * 2;
+
+	widget(container_x, {
+	widget(list_y, {
+		$view.sizer = int(getWidth() / 100);
+
+		&clone.focused = focusedChild();
+		.id = "array";
+		.border = $view.sizer * 1.5;
+		.Xspacing = $view.sizer;
+		.Yspacing = $view.sizer;
+		.childTilesX = 1;
+		.childTilesY = 3;
+
+		cloner($page.model.nodes, backdrop, {
+			source: "img/infoOverlayTop.bmp";
+			alphaSelf: isFocused() * 1;
+			focusable: true;
+
+			onEvent(activate, select($ui.fancyAnimations,
+							navOpen($self.url, void, $self, $parent.model),
+							navOpen($self.url, void, void, $parent.model)));
+
+			widget(container_x, {
+				padding: $ui.size * 0.25;
+				width: $ui.size * 10;
+				height: $ui.size * 8;
+				widget(container_z, {
+
+					widget(fader, {
+				filterConstraintY: true;
+				weight: 1;
+				plane: [0,1,0,1];
+				alphaFallOff: 1;
+				blurFallOff: 0.2;
+				widget(mirror, {
+					alpha: 0.6;
+					widget(stencil, {
+						width: $ui.size * 12;
+						source: "skin://graphics/stencil.png";
+						widget(image, {
+						height: $ui.size * 8;
+							$clone.ready = isReady();
+							source: $self.metadata.icon ?? "img/nophoto.png";
+							color: iir(isFocused(), 4) + 0.4;
+									saturation: 1 - iir(isReady(), 10);
+						});
+
+						widget(container_y, {
+							space(1);
+							widget(throbber, {
+								alpha: iir(!$clone.ready, 8);
+							});
+							space(1);
+						});
+					});
+				});
+			});
+
+					widget(container_y, {
+						filterConstraintX: true;
+						space(6);
+						widget(container_z, {
+							widget(quad, {
+								hidden: !($self.metadata.rating);
+								color: 0;
+								alpha: 0.75;
+							});
+
+							widget(loader, {
+								hidden: !($self.metadata.rating);
+								source: "listitemviews/rating.view";
+							});
+						});
+
+						widget(container_z, {
+							widget(quad, {
+								hidden: !($self.metadata.duration);
+								color: 0;
+								alpha: 0.75;
+							});
+
+							widget(label, {
+								hidden: !($self.metadata.duration);
+								align: center;
+								TextStyleItem();
+								caption: value2duration($self.metadata.duration);
+							});
+						});
+					});
+				});
+
+				widget(dummy, {
+					width: $ui.size * 0.25;
+				});
+
+			widget(container_y, {
+				padding: $ui.size;
+
+				widget(container_x, {
+					widget(frontdrop, {
+					hidden: !($self.metadata.hd);
+					width: $ui.size * 2;
+					source: "img/hd1.png";
+					color: 0.7 + 0.3 * isFocused();
+				});
+
+				widget(label, {
+					caption: $self.metadata.title;
+					bold: true;
+					TextStyleItem();
+					sizeScale: 1.6;
+					color: 0.7 + 0.3 * isFocused();
+				});
+				});
+
+				widget(container_x, {
+					width: $ui.width - $ui.width / 5;
+				widget(label, {
+					caption: $self.metadata.description;
+					TextStyleItem();
+					sizeScale: 1.4;
+					maxlines: 5;
+					color: 0.7 + 0.3 * isFocused();
+				});
+				});
+			});
+			});
+		});
+	});
+
+	LIST_Y_SLIDER("array");
+	});
+});
+
+	$page.glw.background = $clone.focused.metadata.background ?? $page.model.metadata.background/* ?? "img/background.png"*/;
+});
