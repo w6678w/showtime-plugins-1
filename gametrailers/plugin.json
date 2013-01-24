@@ -1,0 +1,14 @@
+{
+	"type": "javascript",
+	"id": "gametrailers",
+	"file": "gametrailers.js",
+	"showtimeVersion": "4.1",
+        "version": "0.4",
+        "author": "Fábio Ferreira (facanferff)",
+        "title": "GameTrailers",
+        "icon": "logo.png",
+        "synopsis": "GameTrailers",
+        "description": "<p>Videos for gamers.<p>",
+        "category": "video",
+        "website": "http://www.facanferff.net/showtime/gametrailers"
+}

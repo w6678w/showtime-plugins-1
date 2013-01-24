@@ -4,7 +4,8 @@ PLUGINS= \
 	watchtv.zip \
 	muzu.tv.zip \
 	khanacademy.zip \
-	videocopilot.zip
+	videocopilot.zip \
+	gametrailers.zip
 
 %.zip:
 	@echo "Bundle plugin '$*'"
