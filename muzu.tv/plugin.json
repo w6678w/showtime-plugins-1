@@ -1,0 +1,12 @@
+{
+	"type": "javascript",
+	"id": "muzu.tv",
+	"file": "muzu.tv.js",
+	"showtimeVersion": "3.2",
+        "version": "0.7",
+        "author": "Fábio Canada (facanferff)",
+        "title": "Muzu.tv",
+        "icon": "logo.png",
+        "synopsis": "Muzu.tv: Music service",
+        "description": "<p>Service that provides Music videos.<p>"
+}
