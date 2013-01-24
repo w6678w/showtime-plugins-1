@@ -5,7 +5,8 @@ PLUGINS= \
 	muzu.tv.zip \
 	khanacademy.zip \
 	videocopilot.zip \
-	gametrailers.zip
+	gametrailers.zip \
+	navi-x.zip
 
 %.zip:
 	@echo "Bundle plugin '$*'"
