@@ -1,0 +1,74 @@
+#import "common.view"
+
+widget(container_y, {
+	widget(container_y, {
+	padding: $ui.size;
+
+	widget(container_x, {
+		widget(label, {
+			caption: $page.model.metadata.title;
+			TextStyleItem();
+			.sizeScale = 3;
+		});
+	});
+
+	widget(container_x, {
+		widget(container_y, {
+			padding: $ui.size * 2;
+			// Image cover
+			widget(image, {
+				source: $page.model.metadata.logo;
+				width: $ui.height * 0.6;
+			});
+		});
+	
+		widget(container_y, {
+			// Details
+			.hidden = !(count($page.model.nodes));
+			padding: $ui.size;
+			.width = $ui.width * 0.35;
+
+			widget(label, {
+				TextStyleItem();
+				.caption = "Details";
+				//.size = 31;
+				.sizeScale = 2.3;
+			});
+			
+			spacing: $ui.size * 0.5;
+
+			cloner($page.model.nodes, loader, {
+				.hidden = ($self.type == "list");
+				source: "itemviews/" + $self.type + ".view";
+			});
+		});
+	
+		widget(container_y, {
+			// Lists
+			spacing: $ui.size * 0.5;
+
+			widget(array, {
+				.childTilesX = 1;
+				.childTilesY = 2;
+
+				cloner($page.model.nodes, loader, {
+					.hidden = ($self.type != "list");
+					source: "itemviews/" + $self.type + ".view";
+				});
+
+				widget(loader, {
+					.source = "itemviews/action.view";
+				});
+			});
+			
+			widget(dummy, { height: $ui.size; });
+			
+			widget(label, {
+				.caption = "Currently selected: " + $clone.focused;
+			});
+			
+			.width = $ui.width - $ui.width / 4 - $ui.width * 2/5;
+		});
+	});
+	});
+});

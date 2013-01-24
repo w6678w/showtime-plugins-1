@@ -1,0 +1,12 @@
+{
+	"author": "F\u00e1bio Ferreira (facanferff)", 
+	"title": "TMDB", 
+	"synopsis": "themoviedb.org is a free and community maintained movie database.", 
+	"version": "1.0", 
+	"file": "tmdb.js", 
+	"showtimeVersion": "4.1", 
+	"type": "javascript", 
+	"id": "tmdb", 
+	"icon": "logo.png", 
+	"category": "metadata"
+}

@@ -8,7 +8,8 @@ PLUGINS= \
 	gametrailers.zip \
 	navi-x.zip \
 	oceanus.zip \
-	youtube.zip
+	youtube.zip \
+	tmdb.zip
 
 %.zip:
 	@echo "Bundle plugin '$*'"
