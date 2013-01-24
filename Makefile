@@ -7,7 +7,8 @@ PLUGINS= \
 	videocopilot.zip \
 	gametrailers.zip \
 	navi-x.zip \
-	oceanus.zip
+	oceanus.zip \
+	youtube.zip
 
 %.zip:
 	@echo "Bundle plugin '$*'"

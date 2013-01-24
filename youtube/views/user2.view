@@ -1,0 +1,26 @@
+#import "common.view"
+
+widget(container_y, {
+	padding: $ui.size;
+
+	widget(container_x, {
+		widget(label, {
+			caption: $page.model.metadata.title;
+			TextStyleItem();
+			.sizeScale = 3;
+		});
+	});
+
+	widget(container_y, {
+		widget(list_y, {
+			.childTilesX = 1;
+			.childTilesY = 2;
+			padding: $ui.size * 2;
+			spacing: $ui.size * 0.5;
+			cloner($page.model.nodes, loader, {
+				.hidden = ($self.type != "list");
+				source: "itemviews/" + $self.type + ".view";
+			});
+		});
+	});
+});
