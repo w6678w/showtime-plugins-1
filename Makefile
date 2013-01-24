@@ -2,7 +2,8 @@
 PLUGINS= \
 	channel9.zip \
 	watchtv.zip \
-	muzu.tv.zip
+	muzu.tv.zip \
+	khanacademy.zip
 
 %.zip:
 	@echo "Bundle plugin '$*'"

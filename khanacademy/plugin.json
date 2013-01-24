@@ -1,0 +1,10 @@
+{
+	"type": "javascript",
+	"id": "khanacademy",
+	"file": "khanacademy.js",
+	"showtimeVersion": "3.3.328",
+        "version": "1.0",
+        "author": "Fábio Canada",
+        "title": "Khan Academy",
+        "icon": "logo.png"
+}
