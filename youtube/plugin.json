@@ -4,7 +4,7 @@
 	"homepage": "https://github.com/facanferff/showtime-plugin-youtube", 
 	"title": "Youtube", 
 	"synopsis": "Youtube: Video Sharing service", 
-	"version": "2.0", 
+	"version": "2.0.2", 
 	"file": "youtube.js", 
 	"showtimeVersion": "4.1", 
 	"type": "javascript", 

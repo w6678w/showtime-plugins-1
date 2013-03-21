@@ -393,7 +393,7 @@
         page.loading = false;
     });
 
-    plugin.addURI(PREFIX + ":edu:category:(.*?)", function(page, categoryId) {
+    plugin.addURI(PREFIX + ":edu:category:(.*)", function(page, categoryId) {
         page.metadata.title = 'Youtube EDU';
         page.metadata.logo = plugin.path + "views/img/logos/edu.png";
 
@@ -1642,10 +1642,10 @@
             '240p', '360p', '480p', '720p', '1080p'
         ];
 
-        var start = data.indexOf("yt.playerConfig = ");
+        var start = data.indexOf("ytplayer.config = ");
 
         if (start > -1) {
-            start = start + "yt.playerConfig = ".length;
+            start = start + "ytplayer.config = ".length;
             var end = data.indexOf("};", start) + 1;
             var data2 = data.slice(start, end);
             if (data2.length > 0) {
