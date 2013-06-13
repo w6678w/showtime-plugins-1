@@ -1,8 +1,10 @@
+//#include "common.view"
+
 widget(container_x, {
   widget(label, {
+	//TextStyleItem();
     .caption = $self.metadata.title;
     .align = left;
-	TextStyleItem();
 	//size: 20;
 	.sizeScale = 1.4;
 	color: 0.75;
