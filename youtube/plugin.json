@@ -6,7 +6,7 @@
 	"synopsis": "Youtube: Video Sharing service", 
 	"version": "2.0.5", 
 	"file": "youtube.js", 
-	"showtimeVersion": "4.3", 
+	"showtimeVersion": "4.3.248", 
 	"type": "javascript", 
 	"id": "youtube", 
 	"icon": "logo.png", 

@@ -9,7 +9,7 @@ widget(container_y, {
 		});
 
 		widget(label, {
-			padding: [$ui.size * 3, 0, 0, 0];
+			padding: [$ui.size * 3, $ui.size, 0, 0];
 			hidden: !isVoid($page.model.metadata.banner);
 			caption: $page.model.metadata.title;
 			TextStyleItem();
