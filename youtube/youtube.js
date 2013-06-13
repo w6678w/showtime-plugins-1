@@ -3779,6 +3779,30 @@
         }
     });
 
+    plugin.addSearcher("Youtube - Videos V3", plugin.path + "logo.png",    
+    function(page, query) {
+        try {
+            pageControllerV3(page, function(nextPageToken) {
+            	var args = {
+            		"part": "id,snippet",
+            		"type": "video",
+            		"q": query
+            	};
+            	if (nextPageToken)
+            		args.pageToken = nextPageToken;
+            	var data = apiV3.search.list(args);
+            	data = data.response;
+            	nextPageToken = data.nextPageToken;
+
+                return data;
+            });
+        }
+        catch(err){
+            e('Search Youtube - Channels V3: ' + err)
+            d(err.stack);
+        }
+    });
+
     plugin.addSearcher("Youtube - Playlists", plugin.path + "logo.png",    
     function(page, query) { 
         try {
