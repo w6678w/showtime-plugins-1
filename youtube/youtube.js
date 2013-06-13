@@ -1043,10 +1043,12 @@
 
     function parseChannelHints(data) {
         var obj = {};
-        data = data.items[0].brandingSettings.hints;
-        for each (var it in data) {
-            obj[it.property] = it.value;
-        }
+        if (data.items[0].brandingSettings) {
+        	data = data.items[0].brandingSettings.hints;
+        	for each (var it in data) {
+            	obj[it.property] = it.value;
+        	}
+    	}
         return obj;
     }
 
@@ -1119,6 +1121,7 @@
         var data = apiV3.channels.list(args);
 
         data = data.response;
+        p(data.items.length);
 
         var hints = parseChannelHints(data);
 
@@ -3042,8 +3045,6 @@
                     this.authenticated = true;
 
                     var response = plugin.cacheGet("Youtube-V3-OAuth2", "access_token");
-                    if (!response)
-                        return;
 
                     if (!response) {
                         var data = this.refreshToken();
@@ -3063,7 +3064,7 @@
             },
 
             "refreshToken": function() {
-                var postdata = "client_id=" + this.client_id + "&client_secret=" + client_secret + 
+                var postdata = "client_id=" + this.client_id + "&client_secret=" + this.client_secret + 
                     "&refresh_token=" + v3_oauth_information.refresh_token + "&grant_type=refresh_token";
                 var response = showtime.JSONDecode(showtime.httpPost("https://accounts.google.com/o/oauth2/token", 
                     postdata, {}, {
