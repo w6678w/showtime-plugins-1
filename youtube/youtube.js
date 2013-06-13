@@ -3588,6 +3588,17 @@
                     		};
                     		var item = page.appendItem(PREFIX + ":v3:request:" + escape(showtime.JSONEncode(args)), "directory", metadata);
                     	}
+                    	else if (entry.kind == "youtube#playlistItem") {
+                    		if (entry.snippet.resourceId.kind == "youtube#video") {
+                    			var item = page.appendItem(PREFIX + ":video:" + entry.snippet.resourceId.videoId, "video", metadata);
+
+                    			item.id = id;
+                    			/*if (entry.media$group && entry.media$group.media$credit) {
+                            	    item.author = entry.media$group.media$credit[0].$t;
+                            	}
+                            	itemOptions(item, entry);*/
+                    		}
+                    	}
                         else if (entry.kind == "youtube#channel") {
                         	if (entry.contentDetails) {
                         		var item = page.appendItem(PREFIX + ':user:' + entry.id, "directory", metadata);
@@ -3606,6 +3617,17 @@
                         }
                     	else if (entry.id.kind == "youtube#channel") {
                         	var item = page.appendItem(PREFIX + ':user:' + entry.id.channelId, "directory", metadata);
+                        }
+                        else if (entry.id.kind == "youtube#playlist") {
+                        	var args = {
+                    			"part": "id,snippet",
+                    			"playlistId": entry.id.playlistId,
+                    			"request": {
+	                    			"type": "playlistItems",
+	                    			"subrequest": "list"
+                    			}
+                    		};
+                    		var item = page.appendItem(PREFIX + ":v3:request:" + escape(showtime.JSONEncode(args)), "directory", metadata);
                         }
                         else if (entry.id.kind == "youtube#video") {
                     		var item = page.appendItem(PREFIX + ":video:" + entry.id.videoId, "video", metadata);
@@ -3798,7 +3820,7 @@
             });
         }
         catch(err){
-            e('Search Youtube - Channels V3: ' + err)
+            e('Search Youtube - Videos V3: ' + err)
             d(err.stack);
         }
     });
@@ -3818,6 +3840,30 @@
         }
         catch(err){
             showtime.trace('Search Youtube - Playlists: '+err)
+        }
+    });
+
+    plugin.addSearcher("Youtube - Playlists V3", plugin.path + "logo.png",    
+    function(page, query) {
+        try {
+            pageControllerV3(page, function(nextPageToken) {
+            	var args = {
+            		"part": "id,snippet",
+            		"type": "playlist",
+            		"q": query
+            	};
+            	if (nextPageToken)
+            		args.pageToken = nextPageToken;
+            	var data = apiV3.search.list(args);
+            	data = data.response;
+            	nextPageToken = data.nextPageToken;
+
+                return data;
+            });
+        }
+        catch(err){
+            e('Search Youtube - Playlists V3: ' + err)
+            d(err.stack);
         }
     });
 
