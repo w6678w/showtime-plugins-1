@@ -839,7 +839,7 @@
                         }
                         else if (entry.category[0].term == 'http://gdata.youtube.com/schemas/2007#friend' ||
                         entry.category[0].term == 'http://gdata.youtube.com/schemas/2007#subscription') {
-                            var item = page.appendItem(PREFIX + ':user:' + entry.yt$username.$t, "directory", metadata);
+                            var item = page.appendItem(PREFIX + ':user:username:' + entry.yt$username.$t, "directory", metadata);
                         }
                         else if (entry.category[0].term == 'http://gdata.youtube.com/schemas/2007#playlistLink' ||
                         entry.category[0].term == 'http://gdata.youtube.com/schemas/2007#show' ||
@@ -856,7 +856,7 @@
                                 icon = 'http:' + icon;
                             }
 
-                            var item = page.appendItem(PREFIX + ':user:' + entry.id.$t.toString().slice(entry.id.$t.toString().lastIndexOf(':')+1), "directory", metadata);
+                            var item = page.appendItem(PREFIX + ':user:username:' + entry.id.$t.toString().slice(entry.id.$t.toString().lastIndexOf(':')+1), "directory", metadata);
                         }
 
                         if (metadata.published) {
@@ -1097,6 +1097,10 @@
 
         return arr;
     }
+
+    plugin.addURI(PREFIX + ":user:username:(.*)", function(page, username) {	
+    	page.redirect(PREFIX + ":user:" + parseChannelId(username));
+    });
 
     plugin.addURI(PREFIX + ":user:(.*)", function(page, user) {
         if (!api.apiAuthenticated && user == 'default') {
@@ -1873,7 +1877,7 @@
         page.appendPassiveItem("bodytext", new showtime.RichText(video.media$group.media$description.$t));
     
         var author = video.author[0].name.$t;
-        page.appendAction("navopen", PREFIX + ':user:'+author, true, {                  
+        page.appendAction("navopen", PREFIX + ':user:username:'+author, true, {                  
             title: author     
         });
 
@@ -1916,7 +1920,7 @@
             extras.push({
                 title: 'User Profile',
                 image: plugin.path + "views/img/logos/user.png",
-                url: PREFIX + ':user:' + video.author[0].name.$t
+                url: PREFIX + ':user:username:' + video.author[0].name.$t
             });
 
             for (var i in video.link) {
@@ -2799,7 +2803,7 @@
     function itemOptions(item, entry) {
         // TODO: Maximum resolution to be played
 
-        item.addOptURL("More from this user", PREFIX + ':user:' + item.author);
+        item.addOptURL("More from this user", PREFIX + ':user:username:' + item.author);
 
         item.addOptAction("Like video", "like");
         item.onEvent('like', function (item) {
@@ -2871,6 +2875,15 @@
         if (reverse) its.reverse();
 
         return its;
+    }
+
+    function parseChannelId(username) {
+    	var data = apiV3.channels.list({
+    		"part": "id",
+    		"forUsername": username
+    	});
+
+    	return data.response.items[0].id;
     }
 
     function pageUpdateItemsPositions(its) {
