@@ -3270,6 +3270,9 @@
         var search = {
             "list": function(args) {
                 var url = "https://www.googleapis.com/youtube/v3/search";
+                args.safeSearch = service.safeSearch;
+                if (service.region != "all")
+                	args.regionCode = service.region;
                 return download(url, args, false);
             }            
         }

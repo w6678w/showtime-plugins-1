@@ -3,7 +3,9 @@
 - Add: Show videos that authenticated user liked
 - Add: Authentication for API v3
 - Add: New URI routes for video playback
-- Enhancement: Improved User Profile (WIP)
+- Add: Initial support for Guide Categories
+- Add: Initial support for Video Categories
+- Enhancement: Improved User Profile
 - Enhancement: Started work to upgrade plugin from API v2 to v3
 
 ### 2.0.4:
