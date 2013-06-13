@@ -265,6 +265,20 @@
 
         var items = [];
 
+        if (api.apiAuthenticated) {
+        	var args = {
+        		"part": "id,snippet,contentDetails",
+        		"home": true,
+        		"request": {
+        			"type": "activities",
+        			"subrequest": "list"
+        		}
+        	};
+       	 	items.push(page.appendItem(PREFIX + ':v3:request:' + escape(showtime.JSONEncode(args)), 'directory', {
+        		title: 'My Activity'
+        	}));
+        }
+
         var args = {
         	"part": "id,snippet",
         	"regionCode": service.region != "all" ? service.region : "US",
@@ -1016,6 +1030,8 @@
 	plugin.addURI(PREFIX + ":v3:request:(.*)", function(page, args) {
         page.type = "directory";
         page.contents = "items";
+
+        page.metadata.background = plugin.path + "views/img/background.png";
 
         args = showtime.JSONDecode(unescape(args));
         try {
@@ -3239,6 +3255,13 @@
             }
         };
 
+        var activities = {
+            "list": function(args) {
+                var url = "https://www.googleapis.com/youtube/v3/activities";
+                return download(url, args, false);
+            }            
+        }
+
         var channels = {
             "list": function(args) {
                 var url = "https://www.googleapis.com/youtube/v3/channels";
@@ -3333,6 +3356,7 @@
 
         return {
             "auth": auth,
+            "activities": activities,
             "channels": channels,
             "guideCategories": guideCategories,
             "playlistItems": playlistItems,
@@ -3565,8 +3589,77 @@
                         images = "imageset:" + showtime.JSONEncode(images);
                         metadata.icon = images;
 
-                        if (entry.kind == "youtube#guideCategory") {
-                    		var args = {
+                        if (entry.kind == "youtube#activity") {
+                        	var title = entry.snippet.title;
+                        	var type = entry.snippet.type;
+                    		var channelTitle = entry.snippet.channelTitle;
+                        	var params = entry.contentDetails[type];
+                        	if (type == "upload") {
+                        		var videoId = entry.contentDetails[type].videoId;
+
+                        		metadata.title = "[UPLOAD] " + title;
+                        		var item = page.appendItem(PREFIX + ":video:" + entry.contentDetails[type].videoId, "video", metadata);
+                        	}
+                        	else if (type == "like") {
+                        		var resourceId = entry.contentDetails[type].resourceId.kind;
+                        		if (resourceId == "youtube#video") {
+                        			var videoId = params.videoId;
+
+                        			metadata.title = "[VIDEO LIKE] " + title;
+                        			var item = page.appendItem(PREFIX + ":video:" + entry.contentDetails[type].resourceId.videoId, "video", metadata);
+                        		}
+                        	}
+                        	else if (type == "favorite") {
+                        		var resourceId = entry.contentDetails[type].resourceId.kind;
+                        		if (resourceId == "youtube#video") {
+                        			var videoId = params.videoId;
+
+                        			metadata.title = "[VIDEO FAVORITE] " + title;
+                        			var item = page.appendItem(PREFIX + ":video:" + entry.contentDetails[type].resourceId.videoId, "video", metadata);
+                        		}
+                        	}
+                        	else if (type == "recommendation") {
+                        		var resourceId = entry.contentDetails[type].resourceId.kind;
+                        		if (resourceId == "youtube#video") {
+									var videoId = entry.contentDetails[type].resourceId.videoId;
+
+									metadata.title = "[VIDEO RECOMMENDATION] " + title;
+                        			var item = page.appendItem(PREFIX + ":video:" + entry.contentDetails[type].resourceId.videoId, "video", metadata);
+                        		}
+                        		else if (resourceId == "youtube#playlist") {
+									var playlistId = entry.contentDetails[type].resourceId.playlistId;
+
+									metadata.title = "[PLAYLIST RECOMMENDATION] " + title;
+                        			var args = {
+                    					"part": "id,snippet",
+                    					"playlistId": playlistId,
+                    					"request": {
+	                    					"type": "playlistItems",
+	                    					"subrequest": "list"
+                    					}
+                    				};
+                    				var item = page.appendItem(PREFIX + ":v3:request:" + escape(showtime.JSONEncode(args)), "directory", 
+                    					metadata);
+                        		}
+                        		else if (resourceId == "youtube#channel") {
+                        			var channelId = entry.contentDetails[type].resourceId.channelId;
+
+                        			metadata.title = "[CHANNEL RECOMMENDATION] " + title;
+                        			var item = page.appendItem(PREFIX + ':user:' + channelId, "directory", metadata);
+                        		}
+                        	}
+                        	else if (type == "subscription") {
+                        		var resourceId = entry.contentDetails[type].resourceId.kind;
+                        		if (resourceId == "youtube#channel") {
+                        			var channelId = entry.contentDetails[type].resourceId.channelId;
+
+                        			metadata.title = "[SUBSCRIPTION] " + title;
+                        			var item = page.appendItem(PREFIX + ':user:' + channelId, "directory", metadata);
+                        		}
+                        	}
+                    	}
+                        else if (entry.kind == "youtube#guideCategory") {
+                        	var args = {
                     			"part": "id,snippet,contentDetails",
                     			"categoryId": entry.id,
                     			"request": {
@@ -3575,7 +3668,7 @@
                     			}
                     		};
                     		var item = page.appendItem(PREFIX + ":v3:request:" + escape(showtime.JSONEncode(args)), "directory", metadata);
-                    	}
+                        }
                     	else if (entry.kind == "youtube#videoCategory") {
                     		var args = {
                     			"part": "id,snippet",
