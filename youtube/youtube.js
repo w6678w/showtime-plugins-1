@@ -276,6 +276,18 @@
         items.push(page.appendItem(PREFIX + ':v3:request:' + escape(showtime.JSONEncode(args)), 'directory', {
         	title: 'Guide Categories', icon: plugin.path + "views/img/logos/explore.png"
         }));
+
+        var args = {
+        	"part": "id,snippet",
+        	"regionCode": service.region != "all" ? service.region : "US",
+        	"request": {
+        		"type": "videoCategories",
+        		"subrequest": "list"
+        	}
+        };
+        items.push(page.appendItem(PREFIX + ':v3:request:' + escape(showtime.JSONEncode(args)), 'directory', {
+        	title: 'Video Categories', icon: plugin.path + "views/img/logos/explore.png"
+        }));
         
         items.push(page.appendItem(PREFIX + ':browse', 'directory', {title: 'Browse Videos', icon: plugin.path + "views/img/logos/explore.png" }));
         items.push(page.appendItem(PREFIX + ':mixfeeds:'+ 'standard_feeds', 'directory', {title: 'Standard Feeds', icon: plugin.path + "views/img/logos/feeds.png" }));
@@ -3269,6 +3281,13 @@
             }            
         }
 
+        var videoCategories = {
+            "list": function(args) {
+                var url = "https://www.googleapis.com/youtube/v3/videoCategories";
+                return download(url, args, false);
+            }            
+        }
+
         var download = function(path, args, reconnecting) {
             var headers = {};
 
@@ -3316,7 +3335,8 @@
             "playlistItems": playlistItems,
             "playlists": playlists,
             "search": search,
-            "subscriptions": subscriptions
+            "subscriptions": subscriptions,
+            "videoCategories": videoCategories
         }
     }
 
@@ -3548,6 +3568,18 @@
                     			"categoryId": entry.id,
                     			"request": {
                     				"type": "channels",
+                    				"subrequest": "list"
+                    			}
+                    		};
+                    		var item = page.appendItem(PREFIX + ":v3:request:" + escape(showtime.JSONEncode(args)), "directory", metadata);
+                    	}
+                    	else if (entry.kind == "youtube#videoCategory") {
+                    		var args = {
+                    			"part": "id,snippet",
+                    			"videoCategoryId": entry.id,
+                    			"type": "video",
+                    			"request": {
+                    				"type": "search",
                     				"subrequest": "list"
                     			}
                     		};
