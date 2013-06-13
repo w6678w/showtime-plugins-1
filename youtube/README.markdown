@@ -9,6 +9,24 @@ This is a plugin supporting Youtube for Showtime. The idea of the plugin is to a
 - Enhancement: Use id tag to identify content
 
 ## Changelog:
+### 2.2:
+- Add: Support for Live Streaming videos using HLS
+- Add: Show videos that authenticated user liked
+- Add: Authentication for API v3
+- Enhancement: Improved User Profile (WIP)
+- Enhancement: Started work to upgrade plugin from API v2 to v3
+
+### 2.0.4:
+- Fix: After an upgrade, the plugin would fail sometimes to boot up
+
+### 2.0.3:
+- Fix: Error messages would not be parsed correctly
+
+### 2.0.2:
+- Fix: Video playback became broken (thanks alexandrezia)
+
+### 2.0.1:
+- Fix: The plugin didn't work under MAC OS X
 
 ### 2.0:
 - Add: Support for Continuous Playback (needs to activate setting in Showtime's Video Playback Settings)
