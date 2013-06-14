@@ -311,6 +311,7 @@
         items.push(page.appendItem(PREFIX + ':mixfeeds:'+ 'movie_feeds', 'directory', {title: 'Youtube Movies', icon: plugin.path + "views/img/logos/movies.png" }));
         items.push(page.appendItem(PREFIX + ':mixfeeds:'+ 'show_feeds', 'directory', {title: 'Youtube Shows', icon: plugin.path + "views/img/logos/shows.png" }));
         items.push(page.appendItem(PREFIX + ':disco:null', 'directory', {title: 'Youtube Disco', icon: plugin.path + "views/img/logos/disco.png" }));
+        items.push(page.appendItem(PREFIX + ':user:UCKVtW8ExxO21F2sNLtwrq_w', 'directory', {title: 'Viso Trailers', icon: plugin.path + "views/img/logos/viso_trailers.png" }));
         
         if (api.apiAuthenticated)
             items.push(page.appendItem(PREFIX + ':user:default', 'directory', {title: 'User Profile', icon: plugin.path + "views/img/logos/user.png" }));
@@ -1190,7 +1191,8 @@
             return;
         }
 
-        pageMenu(page);
+        page.metadata.background = plugin.path + "views/img/background.png";
+        page.metadata.backgroundAlpha = 0.5;
 
         page.metadata.glwview = plugin.path + "views/user2.view";
 
@@ -1237,6 +1239,25 @@
 
         page.metadata.title = data.items[0].snippet.title;
         page.metadata.logo = data.items[0].snippet.thumbnails.default.url;
+
+        if (api.apiAuthenticated && user != 'default') {
+			if (!hasSubscribed(channelId)) {
+        		var subscribeButton = page.appendAction("pageevent", "subscribeUser", false, {
+      				title: "Subscribe User" 
+    			});
+
+    			page.onEvent('subscribeUser', function() {
+      				p("Subscribe: " + channelId);
+      				var data = apiV3.subscriptions.insert(channelId);
+      				if (!data.error && data.response.snippet.resourceId.channelId == channelId) {
+      					showtime.notify("Subscribed to user succesfully", 2);
+      				}
+      				else {
+      					showtime.notify("Failed to subscribed to user", 2);
+      				}
+    			});
+    		}
+        }
 
         var lists_tmp = {};
 
@@ -3148,6 +3169,18 @@
         }
     }
 
+    function hasSubscribed(channelId) {
+    	var args = {
+    		"part": "id,snippet",
+    		"forChannelId": channelId,
+    		"mine": true
+    	};
+
+    	var data = apiV3.subscriptions.list(args);
+        var subscribed = !data.error && data.response.items.length == 1;
+    	return subscribed;
+    }
+
     function YoutubeV3() {
         var authorization = api.headers_common.Authorization;
         
@@ -3304,7 +3337,24 @@
             "list": function(args) {
                 var url = "https://www.googleapis.com/youtube/v3/subscriptions";
                 return download(url, args, false);
-            }            
+            },
+
+            "insert": function(channelId) {
+            	var json = {
+            		"snippet": {
+            			"resourceId": {
+            				"kind": "youtube#channel",
+            				"channelId": channelId
+            			}
+            		}
+            	};
+
+            	var postdata = showtime.JSONEncode(json);
+            	var url = "https://www.googleapis.com/youtube/v3/subscriptions";
+            	return download(url, {
+            		"part": "snippet"
+            	}, false, true, postdata);
+            }          
         }
 
         var videoCategories = {
@@ -3314,7 +3364,7 @@
             }            
         }
 
-        var download = function(path, args, reconnecting) {
+        var download = function(path, args, reconnecting, post, postdata) {
             var headers = {};
 
             if (!args) args = {};
@@ -3333,7 +3383,13 @@
             }
 
             try {
-                var data = showtime.httpGet(url, {}, headers);
+            	var data = null;
+            	if (!post)
+                	data = showtime.httpGet(url, {}, headers);
+                else {
+                	headers["Content-Type"] = "application/json";
+                	data = showtime.httpPost(url, postdata, null, headers);
+                }
                 return {
                     response: showtime.JSONDecode(data.toString()),
                     headers: data.headers
@@ -3345,7 +3401,7 @@
                     debug("Authentication failed. Trying refreshing token.");
                     api.refreshToken();
                     authorization = api.headers_common.Authorization;
-                    return download(path, args, true);
+                    return download(path, args, true, post, postdata);
                 }
 
                 return {
