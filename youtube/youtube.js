@@ -311,7 +311,6 @@
         items.push(page.appendItem(PREFIX + ':mixfeeds:'+ 'movie_feeds', 'directory', {title: 'Youtube Movies', icon: plugin.path + "views/img/logos/movies.png" }));
         items.push(page.appendItem(PREFIX + ':mixfeeds:'+ 'show_feeds', 'directory', {title: 'Youtube Shows', icon: plugin.path + "views/img/logos/shows.png" }));
         items.push(page.appendItem(PREFIX + ':disco:null', 'directory', {title: 'Youtube Disco', icon: plugin.path + "views/img/logos/disco.png" }));
-        items.push(page.appendItem(PREFIX + ':user:UCKVtW8ExxO21F2sNLtwrq_w', 'directory', {title: 'Viso Trailers', icon: plugin.path + "views/img/logos/viso_trailers.png" }));
         
         if (api.apiAuthenticated)
             items.push(page.appendItem(PREFIX + ':user:default', 'directory', {title: 'User Profile', icon: plugin.path + "views/img/logos/user.png" }));
@@ -507,8 +506,7 @@
         }
         catch (ex) {
             page.error('There was one error while requesting for the specified artist: \n' + ex);
-            showtime.trace(ex, "YOUTUBE-ERROR");
-            showtime.trace(ex.stack, "YOUTUBE-ERROR");
+            e(ex);
             return;
         }
     
@@ -1012,6 +1010,8 @@
             });
         }
         catch (err) {
+            e(err);
+
             if (err == 'Error: HTTP error: 400') {
                 var args = '';
                 for (var arg in api.args_common)
@@ -1035,11 +1035,14 @@
         page.metadata.background = plugin.path + "views/img/background.png";
 
         args = showtime.JSONDecode(unescape(args));
+
         try {
             page.metadata.logo = plugin.path + "logo.png";
 
             var type = args.request.type;
             var request = args.request.subrequest;
+            p("Type: " + type);
+            p("Request: " + request);
             delete args.request;
 
             pageControllerV3(page, function(nextPageToken) {
@@ -1053,6 +1056,8 @@
             });
         }
         catch (err) {
+            e(err);
+
             if (err == 'Error: HTTP error: 400') {
                 var args1 = '';
                 for (var arg in args)
@@ -1104,7 +1109,7 @@
             //page.type = "array";
         }
         catch (err) {
-            showtime.print(err);
+            e(err);
 
             if (err == 'Error: HTTP error: 400') {
                 var args = '';
@@ -1164,8 +1169,17 @@
 
                 if (it.kind == "youtube#playlistItem" && it.snippet.resourceId.kind == "youtube#video")
                     args.url = PREFIX + ":video:" + it.snippet.resourceId.videoId;
-                else if (it.kind == "youtube#playlist")
-                    args.url = PREFIX + ":feed:" + escape("https://gdata.youtube.com/feeds/api/playlists/" + it.id);
+                else if (it.kind == "youtube#playlist") {
+                    var args1 = {
+                        "part": "id,snippet",
+                        "playlistId": it.id,
+                        "request": {
+                            "type": "playlistItems",
+                            "subrequest": "list"
+                        }
+                    };
+                    args.url = PREFIX + ":v3:request:" + escape(showtime.JSONEncode(args1));
+                }
                 else if (it.kind == "youtube#subscription" && it.snippet.resourceId.kind == "youtube#channel")
                     args.url = PREFIX + ":user:" + it.snippet.resourceId.channelId;
 
@@ -1586,7 +1600,7 @@
                
                 if (html.length == 0 && pl_obj["args"] && pl_obj["args"]["url_encoded_fmt_stream_map"])
                         html = unescape(pl_obj["args"]["url_encoded_fmt_stream_map"]);
-               
+                
                 if (html.length == 0 && pl_obj["args"] && pl_obj["args"]["fmt_url_map"])
                         html = pl_obj["args"]["fmt_url_map"];
                
@@ -1950,15 +1964,19 @@
     });
   
     plugin.addURI(PREFIX + ":video:advanced:(.*)", function(page, id) {
-        var data = downloader.load(page, 'https://gdata.youtube.com/feeds/api/videos/' + id);
-        if (typeof(data) == "string") {
-            page.error(data);
+        var data = apiV3.videos.list({
+            "part": "id,snippet,contentDetails,statistics,status,topicDetails",
+            "id": id
+        });
+
+        if (data.error) {
+            page.error(data.error);
             return;
         }
 
         pageMenu(page);
 
-        var video = data.response.entry;
+        var video = data.response.items[0];
 
         var events = false;
     
@@ -1967,28 +1985,30 @@
         page.type = "directory";
         page.metadata.glwview = plugin.path + "views/video.view";
 
-        for (var i in api.video_settings) {
-            var element = api.video_settings[i];
+        for (var title in apiV3.videos.information) {
+            var code = apiV3.videos.information[title];
             try {
-                if (element[0] == 'Rating') {
+                if (title == 'Rating') {
                     /*page.metadata.rating;
                     page.appendPassiveItem("rating", eval(element[1]));*/
                 }
                 else {
-                    page.appendPassiveItem("label", eval(element[1]), {title: element[0] + ": "}); 
+                    page.appendPassiveItem("label", eval(code), {title: title+ ": "}); 
                 }
             }
             catch(err) {
-                showtime.trace('Video '+id+' doesn\'t have a '+element[0]+' tag!');
+                showtime.trace('Video ' + id +' doesn\'t have a ' + title +' tag!');
+                e(err);
             }
         }
     
         page.appendPassiveItem("divider");  
     
-        page.appendPassiveItem("bodytext", new showtime.RichText(video.media$group.media$description.$t));
+        page.appendPassiveItem("bodytext", new showtime.RichText(video.snippet.description));
     
-        var author = video.author[0].name.$t;
-        page.appendAction("navopen", PREFIX + ':user:username:'+author, true, {                  
+        var channelId = video.snippet.channelId;
+        var author = video.snippet.channelTitle;
+        page.appendAction("navopen", PREFIX + ':user:' + channelId, true, {                  
             title: author     
         });
 
@@ -2031,7 +2051,7 @@
             extras.push({
                 title: 'User Profile',
                 image: plugin.path + "views/img/logos/user.png",
-                url: PREFIX + ':user:username:' + video.author[0].name.$t
+                url: PREFIX + ':user:' + channelId
             });
 
             for (var i in video.link) {
@@ -2061,30 +2081,29 @@
                     });
                 }
             }
+
+            var args = {
+                "part": "id,snippet",
+                "type": "video",
+                "relatedToVideoId": id,
+                "request": {
+                    "type": "search",
+                    "subrequest": "list"
+                }
+            };
+
+            page.appendAction("navopen", PREFIX + ":v3:request:" + escape(showtime.JSONEncode(args)), true, {                  
+                title: 'Related videos'          
+            });
+            extras.push({
+                title: 'Related',
+                image: plugin.path + "views/img/nophoto.bmp",
+                url: PREFIX + ":v3:request:" + escape(showtime.JSONEncode(args))
+            });
     
             for (var i in video.link) {
                 var link = video.link[i];
-                if (link.rel == 'http://gdata.youtube.com/schemas/2007#video.related') {
-                	var args = {
-            			"part": "id,snippet",
-            			"type": "video",
-            			"relatedToVideoId": id,
-            			"request": {
-            				"type": "search",
-            				"request": "list"
-            			}
-            		};
-
-                    page.appendAction("navopen", PREFIX + ":v3:request:" + escape(showtime.JSONEncode(args)), true, {                  
-                        title: 'Related videos'          
-                    });
-                    extras.push({
-                        title: 'Related',
-                        image: plugin.path + "views/img/nophoto.bmp",
-                        url: PREFIX + ":v3:request:" + escape(showtime.JSONEncode(args))
-                    });
-                }
-                else if (link.rel == 'http://gdata.youtube.com/schemas/2007#video.responses') {
+                if (link.rel == 'http://gdata.youtube.com/schemas/2007#video.responses') {
                     page.appendAction("navopen", PREFIX + ':feed:'+escape('https://gdata.youtube.com/feeds/api/videos/'+id+'/responses'), true, {                  
                         title: 'Response videos'          
                     });
@@ -3008,6 +3027,7 @@
     		return data.response.items[0].id;
     	}
     	catch (ex) {
+            e(ex);
     		return username;
     	}
     }
@@ -3364,6 +3384,21 @@
             }            
         }
 
+        var videos = {
+            "list": function(args) {
+                var url = "https://www.googleapis.com/youtube/v3/videos";
+                return download(url, args, false);
+            },
+
+            "information": {
+                "Uploader": 'video.snippet.channelTitle',
+                //"Category": ''
+                //"Rating": '',
+                "Views": 'video.statistics.viewCount'
+                //"Duration": ''
+            }
+        }
+
         var download = function(path, args, reconnecting, post, postdata) {
             var headers = {};
 
@@ -3419,7 +3454,8 @@
             "playlists": playlists,
             "search": search,
             "subscriptions": subscriptions,
-            "videoCategories": videoCategories
+            "videoCategories": videoCategories,
+            "videos": videos
         }
     }
 
@@ -3446,6 +3482,85 @@
     }
 
     String.prototype.trim=function(){return this.replace(/^\s+|\s+$/g, '');};
+
+    function setVideoItemOptions(item) {
+        if (item.channelId)
+            item.addOptURL("More from this user", PREFIX + ':user:' + item.channelId);
+
+        if (item.videoId) {
+            item.addOptAction("Like video", "like");
+            item.onEvent('like', function (item) {
+                api.like(this.videoId, "like");
+            });
+
+            item.addOptAction("Dislike video", "dislike");
+            item.onEvent('dislike', function(item) {
+                api.like(this.videoId, 'dislike') 
+            });
+
+            item.addOptAction("Comment video", "comment");
+            item.onEvent('comment', function(item) {
+                api.comment(this.videoId) 
+            });
+        
+            item.addOptAction("Add to Favorites", "addFavorite");
+            item.onEvent('addFavorite', function(item) {
+                api.addFavorite(this.videoId) 
+            });
+        
+            item.addOptAction("Add to Watch Later", "watchLater");
+            item.onEvent('watchLater', function(item) {
+                api.watchLater(this.videoId) 
+            });
+
+            var args = {
+                "part": "id,snippet",
+                "type": "video",
+                "relatedToVideoId": item.videoId,
+                "request": {
+                    "type": "search",
+                    "subrequest": "list"
+                }
+            };
+
+            item.addOptURL("Related Videos", PREFIX + ":v3:request:" + escape(showtime.JSONEncode(args)));
+        }
+
+        /*for (var i in entry.link) {
+            var link = entry.link[i];
+
+            if (link.rel == "http://gdata.youtube.com/schemas/2007#video.responses") {
+                item.addOptURL("Responses", PREFIX + ':feed:' + escape(link.href));
+            }
+
+            if (link.rel == "http://gdata.youtube.com/schemas/2007#video.trailer-for") {
+                var match = link.href.match('videos/([^?]*)');
+                if (match) {
+                    item.addOptURL("Redirect to Movie", PREFIX + ':video:' + escape(match[1]));
+                }
+            }
+
+            if (link.rel == "http://gdata.youtube.com/schemas/2007#video.trailers") {
+                item.addOptURL("Trailers", PREFIX + ':feed:' + escape(link.href));
+            }
+
+            if (link.rel == "http://gdata.youtube.com/schemas/2007#video.show") {
+                item.addOptURL("Redirect to Show", PREFIX + ':feed:' + escape(link.href + "/content"));
+            }
+
+            if (link.rel == "http://gdata.youtube.com/schemas/2007#video.season") {
+                item.addOptURL("Redirect to Season", PREFIX + ':feed:' + escape(link.href + "/episodes"));
+            }
+        }*/
+    }
+
+    function addVideoItem(page, entry, metadata) {
+        var item = page.appendItem(PREFIX + ":video:" + entry.videoId, "video", metadata);
+        for (var i in entry)
+            item[i] = entry[i];
+        setVideoItemOptions(item);
+        return item;
+    }
 
     function pageControllerV3(page, loader) {
         items = [];
@@ -3651,36 +3766,40 @@
                     		var channelTitle = entry.snippet.channelTitle;
                         	var params = entry.contentDetails[type];
                         	if (type == "upload") {
-                        		var videoId = entry.contentDetails[type].videoId;
-
                         		metadata.title = "[UPLOAD] " + title;
-                        		var item = page.appendItem(PREFIX + ":video:" + entry.contentDetails[type].videoId, "video", metadata);
+                                var item = addVideoItem(page, {
+                                    videoId: params.videoId,
+                                    channelId: entry.snippet.channelId
+                                }, metadata);
                         	}
                         	else if (type == "like") {
                         		var resourceId = entry.contentDetails[type].resourceId.kind;
                         		if (resourceId == "youtube#video") {
-                        			var videoId = params.videoId;
-
                         			metadata.title = "[VIDEO LIKE] " + title;
-                        			var item = page.appendItem(PREFIX + ":video:" + entry.contentDetails[type].resourceId.videoId, "video", metadata);
+                                    var item = addVideoItem(page, {
+                                        videoId: params.resourceId.videoId,
+                                        channelId: entry.snippet.channelId
+                                    }, metadata);
                         		}
                         	}
                         	else if (type == "favorite") {
                         		var resourceId = entry.contentDetails[type].resourceId.kind;
                         		if (resourceId == "youtube#video") {
-                        			var videoId = params.videoId;
-
                         			metadata.title = "[VIDEO FAVORITE] " + title;
-                        			var item = page.appendItem(PREFIX + ":video:" + entry.contentDetails[type].resourceId.videoId, "video", metadata);
+                                    var item = addVideoItem(page, {
+                                        videoId: params.resourceId.videoId,
+                                        channelId: entry.snippet.channelId
+                                    }, metadata);
                         		}
                         	}
                         	else if (type == "recommendation") {
                         		var resourceId = entry.contentDetails[type].resourceId.kind;
                         		if (resourceId == "youtube#video") {
-									var videoId = entry.contentDetails[type].resourceId.videoId;
-
 									metadata.title = "[VIDEO RECOMMENDATION] " + title;
-                        			var item = page.appendItem(PREFIX + ":video:" + entry.contentDetails[type].resourceId.videoId, "video", metadata);
+                                    var item = addVideoItem(page, {
+                                        videoId: params.resourceId.videoId,
+                                        channelId: entry.snippet.channelId
+                                    }, metadata);
                         		}
                         		else if (resourceId == "youtube#playlist") {
 									var playlistId = entry.contentDetails[type].resourceId.playlistId;
@@ -3739,13 +3858,9 @@
                     	}
                     	else if (entry.kind == "youtube#playlistItem") {
                     		if (entry.snippet.resourceId.kind == "youtube#video") {
-                    			var item = page.appendItem(PREFIX + ":video:" + entry.snippet.resourceId.videoId, "video", metadata);
-
-                    			item.id = id;
-                    			/*if (entry.media$group && entry.media$group.media$credit) {
-                            	    item.author = entry.media$group.media$credit[0].$t;
-                            	}
-                            	itemOptions(item, entry);*/
+                                addVideoItem(page, {
+                                    videoId: entry.snippet.resourceId.videoId
+                                }, metadata);
                     		}
                     	}
                         else if (entry.kind == "youtube#channel") {
@@ -3779,120 +3894,10 @@
                     		var item = page.appendItem(PREFIX + ":v3:request:" + escape(showtime.JSONEncode(args)), "directory", metadata);
                         }
                         else if (entry.id.kind == "youtube#video") {
-                    		var item = page.appendItem(PREFIX + ":video:" + entry.id.videoId, "video", metadata);
-
-                    		item.id = id;
-                    		/*if (entry.media$group && entry.media$group.media$credit) {
-                                item.author = entry.media$group.media$credit[0].$t;
-                            }
-                            itemOptions(item, entry);*/
+                            var item = addVideoItem(page, {
+                                videoId: entry.id.videoId
+                            }, metadata);
                     	}
-
-                        // unsupported
-                        else if (entry.media$group && entry.media$group.yt$videoid) {
-                            var id = entry.media$group.yt$videoid.$t;
-                            metadata.hqPicture = "http://i.ytimg.com/vi/" + id + "/hqdefault.jpg";
-                            //metadata.icon = metadata.hqPicture;
-                            metadata.album_art = metadata.hqPicture;
-                            metadata.picture1 = "http://i.ytimg.com/vi/" + id + "/1.jpg";
-                            metadata.picture2 = "http://i.ytimg.com/vi/" + id + "/3.jpg";
-
-                            var item = page.appendItem(PREFIX + ':video:' + id, "video", metadata);
-
-                            item.id = id;
-                            if (entry.media$group && entry.media$group.media$credit) {
-                                item.author = entry.media$group.media$credit[0].$t;
-                            }
-                            itemOptions(item, entry);
-                        }
-                        else if (entry.category[0].term == "http://gdata.youtube.com/schemas/2007#course") {
-                            var match = entry.id.$t.match(":course:([^:]*)")[1];
-                            var item = page.appendItem(PREFIX + ':feed:' + escape("http://gdata.youtube.com/feeds/api/edu/lectures?course=" + match), "directory", metadata);
-                        }
-                        else if (doc.id.$t.toString().indexOf('charts:movies') != -1) {
-                            
-                            if (entry.yt$firstReleased) {
-                                metadata.released = date_string(entry.yt$firstReleased.$t);
-                            }
-
-                            for (var i in entry.media$group.media$category) {
-                                var el = entry.media$group.media$category[i];
-                                if (el.scheme == 'http://gdata.youtube.com/schemas/2007/mediatypes.cat') {
-                                    metadata.mediatype = api.mediatypes[parseInt(el.$t) - 1];
-                                }
-                                if (el.scheme == 'http://gdata.youtube.com/schemas/2007/moviegenres.cat') {
-                                    metadata.moviegenre = api.moviegenres[parseInt(el.$t) - 1];
-                                }
-                            }
-                        }
-                        else if (entry.category[0].term == 'http://gdata.youtube.com/schemas/2007#season') {
-                            for (var i in entry.gd$feedLink) {
-                                var link = entry.gd$feedLink[i];
-
-                                var title = link.rel.valueOf().slice(link.rel.valueOf().indexOf('#')+1).replace(/\./g,' ');
-
-                                title = title.slice(title.indexOf(' ')+1)
-                                title = title.charAt(0).toUpperCase() + title.slice(1);
-
-                                metadata.title = "Season " + entry.yt$season.season + ' - ' + title;
-
-                                var item = page.appendItem(PREFIX + ':feed:' + escape(link.href), "directory", metadata);
-
-                                item.appendItem = "page.appendItem(PREFIX + ':feed:' + escape(link.href), \"directory\", metadata);";
-                            }
-                        }
-                        else if (entry.category[0].term == 'http://gdata.youtube.com/schemas/2007#video' ||
-                        entry.category[0].term == 'http://gdata.youtube.com/schemas/2007#playlist' ||
-                        entry.category[0].term == 'http://gdata.youtube.com/schemas/2007#userEvent' ||
-                        entry.category[0].term == 'http://gdata.youtube.com/schemas/2007#liveEvent') {
-                            id = entry.id.$t.toString().slice(entry.id.$t.toString().lastIndexOf(':')+1)
-                            if (id.length > 11) {
-                                if (entry.yt$videoid)
-                                    id = entry.yt$videoid.$t;
-                                else if (entry.content) {
-                                    id = entry.content.src.toString().slice(entry.content.src.toString().lastIndexOf('/')+1, 
-                                    (entry.content.src.toString().lastIndexOf('?')!=-1)?entry.content.src.toString().lastIndexOf('?'):entry.content.src.toString().length)
-                                }
-                                else {
-                                    id = entry.link[0].href;
-                                    id = id.slice(id.indexOf('v=') + 2, id.indexOf('&'));
-                                }
-                            }
-
-                            metadata.hqPicture = "http://i.ytimg.com/vi/" + id + "/hqdefault.jpg";
-                            metadata.icon = metadata.hqPicture;
-                            metadata.picture1 = "http://i.ytimg.com/vi/" + id + "/1.jpg";
-                            metadata.picture2 = "http://i.ytimg.com/vi/" + id + "/2.jpg";
-                        
-                            var item = page.appendItem(PREFIX + ':video:' + id, "video", metadata);
-
-                            item.id = id;
-                            if (entry.media$group && entry.media$group.media$credit) {
-                                item.author = entry.media$group.media$credit[0].$t;
-                            }
-                            itemOptions(item, entry);
-                        }
-                        else if (entry.category[0].term == 'http://gdata.youtube.com/schemas/2007#friend' ||
-                        entry.category[0].term == 'http://gdata.youtube.com/schemas/2007#subscription') {
-                            var item = page.appendItem(PREFIX + ':user:username:' + entry.yt$username.$t, "directory", metadata);
-                        }
-                        else if (entry.category[0].term == 'http://gdata.youtube.com/schemas/2007#playlistLink' ||
-                        entry.category[0].term == 'http://gdata.youtube.com/schemas/2007#show' ||
-                        entry.category[0].term == 'http://gdata.youtube.com/schemas/2007#season') {
-                            url = entry.content.src;
-                            var item = page.appendItem(PREFIX + ':feed:' + escape(url), "directory", metadata);
-                        }
-                        else if (entry.category[0].term == 'http://gdata.youtube.com/schemas/2007#channel') {
-                            var item = page.appendItem(PREFIX + ':feed:' + escape(entry.gd$feedLink[0].href), "directory", metadata);
-                        }
-                        else if (entry.category[0].term == 'http://gdata.youtube.com/schemas/2007#channelstandard') {
-                            var icon = eval('(entry.media$group)?entry.media$group.media$thumbnail[0].url:null');
-                            if (icon && icon.slice(0, 2) == '//') {
-                                icon = 'http:' + icon;
-                            }
-
-                            var item = page.appendItem(PREFIX + ':user:username:' + entry.id.$t.toString().slice(entry.id.$t.toString().lastIndexOf(':')+1), "directory", metadata);
-                        }
 
                         if (metadata.published) {
                             // 2012-08-10T19:34:51.000Z
