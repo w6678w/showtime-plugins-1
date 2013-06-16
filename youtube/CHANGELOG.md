@@ -5,6 +5,7 @@
 - Add: New URI routes for video playback
 - Add: Initial support for Guide Categories
 - Add: Initial support for Video Categories
+- Add: Like, Dislike, Add to Favorites, Add to Watch Later and Comment to video advanced mode
 - Enhancement: Improved User Profile
 - Enhancement: Started work to upgrade plugin from API v2 to v3
 

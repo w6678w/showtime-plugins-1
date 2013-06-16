@@ -36,24 +36,27 @@ widget(container_y, {
 
 		widget(container_y, {
 			widget(array, {
-			// Lists
-			.childTilesX = 1;
-			.childTilesY = 2;
 				// Lists
-			padding: $ui.size * 2;
-			spacing: $ui.size * 0.5;
-			cloner($page.model.nodes, loader, {
-				.hidden = ($self.type != "list");
-				source: "itemviews/" + $self.type + ".view";
-			});
+				.childTilesX = 1;
+				.childTilesY = 2;
+				padding: $ui.size * 2;
+				spacing: $ui.size * 0.5;
+				cloner($page.model.nodes, loader, {
+					.hidden = ($self.type != "list");
+					source: "itemviews/" + $self.type + ".view";
+				});
+
+				widget(loader, {
+					source: "itemviews/list_actions.view";
+				});
 			
-			widget(dummy, { height: $ui.size; });
+				widget(dummy, { height: $ui.size; });
 			
-			widget(label, {
-				.caption = "Currently selected: " + $clone.focused;
-			});
+				widget(label, {
+					.caption = "Currently selected: " + $clone.focused;
+				});
 			
-			.width = $ui.width - $ui.width / 4 - $ui.width / 3;
+				.width = $ui.width - $ui.width / 4 - $ui.width / 3;
 			});
 		});
 	});

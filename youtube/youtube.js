@@ -1964,6 +1964,8 @@
     });
   
     plugin.addURI(PREFIX + ":video:advanced:(.*)", function(page, id) {
+        var videoId = id;
+
         var data = apiV3.videos.list({
             "part": "id,snippet,contentDetails,statistics,status,topicDetails",
             "id": id
@@ -2117,47 +2119,50 @@
             if (extras.length > 0)
                 page.appendPassiveItem("list", extras, { title: "Extras" });
 
-            /*if (api.apiAuthenticated) {
-                var limitations = '';
-                for (var i in video.yt$accessControl) {
-                    if (video.yt$accessControl[i].permission == 'denied')
-                        limitations += video.yt$accessControl[i].action;
-                }
+            page.appendAction("pageevent", "like", true, {                  
+                title: 'Like',
+                icon: plugin.path + "views/img/like.png",
+                listActions: true      
+            });
+            page.onEvent('like', function () {
+                api.like(videoId, "like");
+            });
 
-                var interactions = [];
-                page.appendAction("pageevent", "like", true, {title:'Like'});
-                page.options.createAction("like", "Like", function() {
-                    if (events)
-                        api.like(id, 'like');
-                });
+            page.appendAction("pageevent", "dislike", true, {                  
+                title: 'Dislike',
+                icon: plugin.path + "views/img/dislike.png",
+                listActions: true      
+            });
+            page.onEvent('dislike', function () {
+                api.like(videoId, 'dislike');
+            });
 
-                page.appendAction("pageevent", "dislike", true, {title:'Dislike'});
-                page.options.createAction("dislike", "Dislike", function() {
-                    if (events)
-                        api.like(id, 'dislike')
-                });
+            page.appendAction("pageevent", "addFavorite", true, {                  
+                title: 'Add to Favorites',
+                icon: plugin.path + "views/img/favorite.png",
+                listActions: true      
+            });
+            page.onEvent('addFavorite', function() {
+                api.addFavorite(videoId);
+            });
 
-                if (limitations.indexOf('comment') == -1) {
-                    page.appendAction("pageevent", "comment", true, {title:'Comment'});
-                    page.options.createAction("comment", "Comment", function() {
-                        if (events)
-                            api.comment(id);
-                    });
-                }
-                page.appendAction("pageevent", "addFavorite", true, {title:'Add favorite'});
-                page.options.createAction("addFavorite", "Add favorite", function() {
-                    if (events)
-                        api.addFavorite(id);
-                });
+            page.appendAction("pageevent", "watchLater", true, {                  
+                title: 'Add to Watch Later',
+                icon: plugin.path + "views/img/watch_later.png",
+                listActions: true      
+            });
+            page.onEvent('watchLater', function() {
+                api.watchLater(videoId); 
+            });
 
-                page.appendAction("pageevent", "watchLater", true, {title:'Watch Later'});
-                page.options.createAction("watchLater", "Watch Later", function() {
-                    if (events)
-                        api.watchLater(id);
-                });
-
-                page.appendPassiveItem("list", interactions, { title: "Interactions" });
-            }*/
+            page.appendAction("pageevent", "comment", true, {                  
+                title: 'Comment',
+                icon: plugin.path + "views/img/comment.png",
+                listActions: true      
+            });
+            page.onEvent('comment', function() {
+                api.comment(videoId); 
+            });
     
             page.metadata.logo = plugin.path + "logo.png";
         }
