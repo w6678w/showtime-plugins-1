@@ -217,15 +217,15 @@
     settings.createDivider('User Settings');
 
     var api = new Youtube_API();
-    api.init();
+    //api.init();
 
     var apiV3 = new YoutubeV3();
     apiV3.auth.init();
 
-    settings.createAction("login", "API Log In", function () {
+    /*settings.createAction("login", "API Log In", function () {
         if (api.login())
             showtime.notify('Authenticated succesfully', 2);
-    });
+    });*/
 
     settings.createAction("loginV3", "API Log In (Youtube API v3)", function () {
         if (apiV3.auth.request())
@@ -233,7 +233,6 @@
     });
 
     var website = new websiteApi();
-    var downloader = new Downloader();
     var items = [];
     var items_tmp = [];
 
@@ -265,7 +264,7 @@
 
         var items = [];
 
-        if (api.apiAuthenticated) {
+        if (apiV3.authenticated) {
         	var args = {
         		"part": "id,snippet,contentDetails",
         		"home": true,
@@ -625,6 +624,9 @@
             var num = 0;
             while(total_items < max_items) {	
                 var doc = loader(offset + num).feed;
+                if (!doc || typeof(doc) == String) {
+                    break;
+                }
                 page.entries = doc.openSearch$totalResults.$t;
                 total_items += doc.openSearch$itemsPerPage.$t;
 
@@ -992,7 +994,16 @@
                         url += '_' + service.channelType;
                 }
                 
-                var doc = downloader.load(page, url, api.args_common);
+                var doc = apiV3.download({
+                    "path": url,
+                    "args": api.args_common,
+                    "apiV2": true
+                })
+
+                if (doc.error) {
+                    page.error(doc.error);
+                    return doc.error;
+                }
 
                 country = doc.headers['X-GData-User-Country'];
 
@@ -1070,59 +1081,6 @@
                 page.error('This request was deleted or is not available at the moment');
             else
                 page.error('There was one unknown error: ' + err);
-        }
-        page.loading = false;
-    });
-
-    plugin.addURI(PREFIX + ":search:(.*)", function(page, query) {
-        var sort_included = false;
-        var duration_included = false;
-
-        try {
-            page.metadata.logo = plugin.path + "logo.png";
-            api.reset_args();
-
-            pageController(page, function(offset) { 
-                api.args_common['start-index']=offset;
-                api.args_common['q'] = query;
-            
-                var url = "https://gdata.youtube.com/feeds/api/videos";
-            
-                var link = putUrlArgs(url, api.args_common);
-
-                var doc = downloader.load(page, url, api.args_common);
-                
-                country = doc.headers['X-GData-User-Country'];
-
-                doc = doc.response;
-                if (doc.feed.title) {
-                    page.metadata.title = doc.feed.title.$t;
-                }
-
-                if (!duration_included) {
-                    page.appendItem(PREFIX + ':feed:duration:' + escape(link),"directory", {title: "Filter by duration"});
-                    duration_included = true;
-                }
-
-                return doc;
-            });
-            //page.type = "array";
-        }
-        catch (err) {
-            e(err);
-
-            if (err == 'Error: HTTP error: 400') {
-                var args = '';
-                for (var arg in api.args_common)
-                    args += '\n' + arg + ': ' + api.args_common[arg]
-            
-                page.error('The request for the feed contains incompatible args. Please contact facanferff with the following information:\n'+
-                err + args);
-            }
-            else if (err == 'Error: HTTP error: 404')
-                page.error('This feed was deleted or is not available at the moment');
-            else
-                page.error('There was one unknown error...\n' + err);
         }
         page.loading = false;
     });
@@ -2161,7 +2119,7 @@
                 listActions: true      
             });
             page.onEvent('comment', function() {
-                api.comment(videoId); 
+                api.comment(videoId);
             });
     
             page.metadata.logo = plugin.path + "logo.png";
@@ -2276,6 +2234,9 @@
     function Youtube_API() {
         this.apiAuthenticated = false;
 
+        this.client_id = "477107727317.apps.googleusercontent.com";
+        this.client_secret = "B_YZQdB-JxWBU00xg7D8dkBk";
+
         this.storeLoginInformation = function() {
             var data = "access_token: " + this.access_token + "\nexpires_in: " + this.expires_in +
                 "\ntoken_type: " + this.token_type + "\nrefresh_token: " + this.refresh_token +
@@ -2329,7 +2290,7 @@
 
             try {
                 var data = showtime.httpPost("https://accounts.google.com/o/oauth2/device/code", '', {
-                    'client_id': '674074648448.apps.googleusercontent.com',
+                    'client_id': this.client_id,
                     'scope': 'https://gdata.youtube.com'
                 }, {
                     'Content-Length': '0'   
@@ -2363,7 +2324,7 @@
 
         this.pollRequest = function() {
             try {
-                var post = 'client_id=674074648448.apps.googleusercontent.com&client_secret=005XVL13iyAmIFX14X0BYCvo&code=' + this.device_code + '&grant_type=http://oauth.net/grant_type/device/1.0';
+                var post = 'client_id=' + this.client_id + '&client_secret=' + this.client_secret + '&code=' + this.device_code + '&grant_type=http://oauth.net/grant_type/device/1.0';
                 var data = showtime.httpPost("https://accounts.google.com/o/oauth2/token", 
                     post, {}, {
                         'Content-Type': 'application/x-www-form-urlencoded',
@@ -2403,7 +2364,7 @@
 
         this.refreshToken = function(){
             try {
-                var post = 'client_id=674074648448.apps.googleusercontent.com&client_secret=005XVL13iyAmIFX14X0BYCvo&refresh_token=' + this['refresh_token'] + '&grant_type=refresh_token';
+                var post = 'client_id=' + this.client_id + '&client_secret=' + this.client_secret + '&refresh_token=' + this['refresh_token'] + '&grant_type=refresh_token';
                 var data = showtime.JSONDecode(showtime.httpPost("https://accounts.google.com/o/oauth2/token", 
                     post, {}, {
                         'Content-Type': 'application/x-www-form-urlencoded',
@@ -3157,43 +3118,6 @@
         }
     }
 
-    function Downloader() {
-        this.load = function(page, path, args) {
-            if (!args) args = {};
-            args.alt = "json";
-            args.v = 2;
-
-            try {
-                var data = showtime.httpGet(path, args, api.headers_common);
-                return {
-                    response: showtime.JSONDecode(data.toString()),
-                    headers: data.headers
-                };
-            }
-            catch(ex) {
-                debug(ex);
-                if (ex == "Error: Authentication without realm" && api.apiAuthenticated) {
-                    debug("Authentication failed. Trying refreshing token.");
-                    api.refreshToken();
-                    try {
-                        var data = showtime.httpGet(path, args, api.headers_common);
-                        return {
-                            response: showtime.JSONDecode(data.toString()),
-                            headers: data.headers
-                        };
-                    }
-                    catch(ex) {
-                        debug(ex);
-                        showtime.trace(ex, "YOUTUBE-ERROR");
-                        showtime.trace(ex.stack, "YOUTUBE-ERROR");
-                    }
-                }
-
-                return "Failed to parse request.";
-            }
-        }
-    }
-
     function hasSubscribed(channelId) {
     	var args = {
     		"part": "id,snippet",
@@ -3207,8 +3131,6 @@
     }
 
     function YoutubeV3() {
-        var authorization = api.headers_common.Authorization;
-        
         var key = "AIzaSyCSDI9_w8ROa1UoE2CNIUdDQnUhNbp9XR4";
 
         var auth = {
@@ -3219,6 +3141,7 @@
             "init": function() {
                 if (v3_oauth_information.access_token) {
                     this.authenticated = true;
+                    api.headers_common.Authorization = v3_oauth_information.token_type + " " + v3_oauth_information.access_token;
 
                     var response = plugin.cacheGet("Youtube-V3-OAuth2", "access_token");
 
@@ -3231,6 +3154,7 @@
 
                         plugin.cachePut("Youtube-V3-OAuth2", "access_token", v3_oauth_information.access_token, 
                             parseInt(v3_oauth_information.expires_in));
+                        api.headers_common.Authorization = v3_oauth_information.token_type + " " + v3_oauth_information.access_token;
 
                         response = plugin.cacheGet("Youtube-V3-OAuth2", "access_token").join("");
                     }
@@ -3304,6 +3228,9 @@
 
                     t("Authenticated succesfully");
                     this.authenticated = true;
+
+                    api.apiAuthenticated = true;
+                    api.headers_common.Authorization = v3_oauth_information.token_type + " " + v3_oauth_information.access_token;
 
                     plugin.cachePut("Youtube-V3-OAuth2", "access_token", v3_oauth_information.access_token, 
                         parseInt(v3_oauth_information.expires_in));
@@ -3404,13 +3331,20 @@
             }
         }
 
-        var download = function(path, args, reconnecting, post, postdata) {
-            var headers = {};
+        var download0 = function(options) {
+            var headers = options.headers ? options.headers : {};
 
+            var args = options.args;
             if (!args) args = {};
             args.key = key;
 
+            var path = options.path;
             var url = path + encodeArgs(args);
+
+            if (options.apiV2) {
+                headers["GData-Version"] = "2.1";
+                headers["X-GData-Key"] = "key=AI39si7gfa8PEGC6qMb5Kk04aPInFlZVRIPZio6fNE9-0uwS4Qvo9dbhGxzeWIEQ8J4hMHGMtw2xOHuDGn3ped2EktTAVqCU9w";
+            }
 
             if (apiV3.auth.authenticated) {
                 var access_token = plugin.cacheGet("Youtube-V3-OAuth2", "access_token");
@@ -3422,13 +3356,25 @@
                 headers.Authorization = v3_oauth_information.token_type + " " + access_token;
             }
 
+            d("Preparing to parse request:");
+            d("URL: " + url);
+            d("Args: ");
+            for (var i in args)
+                p(i + ": " + args[i]);
+
+            d("Headers: ");
+            for (var i in headers)
+                p(i + ": " + headers[i]);
+
             try {
-            	var data = null;
-            	if (!post)
-                	data = showtime.httpGet(url, {}, headers);
+                var data = null;
+                var post = options.post;
+                var postdata = options.postdata;
+                if (!post)
+                    data = showtime.httpGet(url, {}, headers);
                 else {
-                	headers["Content-Type"] = "application/json";
-                	data = showtime.httpPost(url, postdata, null, headers);
+                    headers["Content-Type"] = "application/json";
+                    data = showtime.httpPost(url, postdata, null, headers);
                 }
                 return {
                     response: showtime.JSONDecode(data.toString()),
@@ -3437,17 +3383,28 @@
             }
             catch(ex) {
                 debug(ex);
+                var reconnecting = options.reconnecting;
                 if (!reconnecting && ex == "Error: Authentication without realm" && api.apiAuthenticated) {
                     debug("Authentication failed. Trying refreshing token.");
                     api.refreshToken();
                     authorization = api.headers_common.Authorization;
-                    return download(path, args, true, post, postdata);
+                    return download0(options);
                 }
 
                 return {
                     error: "Failed to parse request: " + ex
                 };
             }
+        }
+
+        var download = function(path, args, reconnecting, post, postdata) {
+            return download0({
+                "path": path,
+                "args": args,
+                "reconnecting": reconnecting,
+                "post": post,
+                "postdata": postdata
+            });
         }
 
         return {
@@ -3460,7 +3417,8 @@
             "search": search,
             "subscriptions": subscriptions,
             "videoCategories": videoCategories,
-            "videos": videos
+            "videos": videos,
+            "download": download0
         }
     }
 
