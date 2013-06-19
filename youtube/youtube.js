@@ -1240,7 +1240,8 @@
                     "path": 'https://gdata.youtube.com/feeds/api/users/' + user + '/newsubscriptionvideos',
                     "args": {
                         "alt": "json"
-                    }
+                    },
+                    "apiV2": true
                 });
                 data = data.response.feed;
                 var newSubscriptionVideos = [];
@@ -3202,11 +3203,14 @@
             d("URL: " + url);
             d("Args: ");
             for (var i in args)
-                p(i + ": " + args[i]);
+                d(i + ": " + args[i]);
 
             d("Headers: ");
-            for (var i in headers)
-                p(i + ": " + headers[i]);
+            for (var i in headers) {
+                if (i != "Authorization")
+                    d(i + ": " + headers[i]);
+            }
+            d("Authorized user");
 
             try {
                 var data = null;
