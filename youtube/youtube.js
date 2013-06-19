@@ -303,7 +303,6 @@
         	title: 'Video Categories', icon: plugin.path + "views/img/logos/explore.png"
         }));
         
-        items.push(page.appendItem(PREFIX + ':browse', 'directory', {title: 'Browse Videos', icon: plugin.path + "views/img/logos/explore.png" }));
         items.push(page.appendItem(PREFIX + ':mixfeeds:'+ 'standard_feeds', 'directory', {title: 'Standard Feeds', icon: plugin.path + "views/img/logos/feeds.png" }));
         items.push(page.appendItem(PREFIX + ':mixfeeds:'+ 'channel_feeds', 'directory', {title: 'Channel Feeds', icon: plugin.path + "views/img/logos/channels.png" }));
         items.push(page.appendItem(PREFIX + ':edu', 'directory', { title: 'Youtube EDU', icon: plugin.path + "views/img/logos/edu.png" }));
@@ -508,26 +507,6 @@
             page.error('There was one error while requesting for the specified artist: \n' + ex);
             e(ex);
             return;
-        }
-    
-        page.type = "directory";
-        page.contents = "items";
-        page.loading = false;
-    });
-  
-    plugin.addURI(PREFIX + ":browse", function(page) {
-        page.metadata.title = 'Youtube';
-        page.metadata.logo = plugin.path + "logo.png";
-
-        pageMenu(page);
-		
-		//page.metadata.glwview = plugin.path + "views/array2.view";
-    
-        for (var i in categories) {
-            var entry = categories[i];
-            page.appendItem(PREFIX + ':feed:' + escape('https://gdata.youtube.com/feeds/api/videos?category=' + entry[0]), 'directory', {
-                title: entry[1]
-            })
         }
     
         page.type = "directory";
