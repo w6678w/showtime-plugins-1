@@ -3349,6 +3349,48 @@
         return item;
     }
 
+    function getVideoId(entry) {
+        try {
+            if (entry.kind == "youtube#activity") {
+                var type = entry.snippet.type;
+                var params = entry.contentDetails[type];
+                if (type == "upload") {
+                    return params.videoId;
+                }
+                else if (type == "like") {
+                    var resourceId = entry.contentDetails[type].resourceId.kind;
+                    if (resourceId == "youtube#video") {
+                        return params.resourceId.videoId;
+                    }
+                }
+                else if (type == "favorite") {
+                    var resourceId = entry.contentDetails[type].resourceId.kind;
+                    if (resourceId == "youtube#video") {
+                        return params.resourceId.videoId;
+                    }
+                }
+                else if (type == "recommendation") {
+                    var resourceId = entry.contentDetails[type].resourceId.kind;
+                    if (resourceId == "youtube#video") {
+                        return params.resourceId.videoId;
+                    }
+                }
+            }
+            else if (entry.kind == "youtube#playlistItem") {
+                if (entry.snippet.resourceId.kind == "youtube#video") {
+                    return entry.snippet.resourceId.videoId;
+                }
+            }
+            else if (entry.id && entry.id.kind && entry.id.kind == "youtube#video") {
+                return entry.id.videoId;
+            }
+        }
+        catch (ex) {
+            e(ex);
+        }
+        return null;
+    }
+
     function pageControllerV3(page, loader) {
         items = [];
         items_tmp = [];
@@ -3399,40 +3441,9 @@
                 for (var i in data.items) {
                     var entry = data.items[i];
 
-                    try {
-                    if (type == "upload") {
-                        videoIds.push(params.videoId);
-                    }
-                    else if (type == "like") {
-                        var resourceId = entry.contentDetails[type].resourceId.kind;
-                        if (resourceId == "youtube#video") {
-                            videoIds.push(params.resourceId.videoId);
-                        }
-                    }
-                    else if (type == "favorite") {
-                        var resourceId = entry.contentDetails[type].resourceId.kind;
-                        if (resourceId == "youtube#video") {
-                            videoIds.push(params.resourceId.videoId);
-                        }
-                    }
-                    else if (type == "recommendation") {
-                        var resourceId = entry.contentDetails[type].resourceId.kind;
-                        if (resourceId == "youtube#video") {
-                            videoIds.push(params.resourceId.videoId);
-                        }
-                    }
-                    else if (entry.kind == "youtube#playlistItem") {
-                        if (entry.snippet.resourceId.kind == "youtube#video") {
-                            videoIds.push(entry.snippet.resourceId.videoId);
-                        }
-                    }
-                    else if (entry.id && entry.id.kind && entry.id.kind == "youtube#video") {
-                        videoIds.push(entry.id.videoId);
-                    }
-                    }
-                    catch (ex) {
-                        e(ex);
-                    }
+                    var videoId = getVideoId(entry);
+                    if (videoId)
+                        videoIds.push(videoId);
                 }
 
                 var data1 = apiV3.download({
@@ -3460,37 +3471,7 @@
 
                         var metadata = {};
 
-                        var videoId;
-
-                        if (type == "upload") {
-                        videoId = params.videoId;
-                    }
-                    else if (type == "like") {
-                        var resourceId = entry.contentDetails[type].resourceId.kind;
-                        if (resourceId == "youtube#video") {
-                            videoId = params.resourceId.videoId;
-                        }
-                    }
-                    else if (type == "favorite") {
-                        var resourceId = entry.contentDetails[type].resourceId.kind;
-                        if (resourceId == "youtube#video") {
-                            videoId = params.resourceId.videoId;
-                        }
-                    }
-                    else if (type == "recommendation") {
-                        var resourceId = entry.contentDetails[type].resourceId.kind;
-                        if (resourceId == "youtube#video") {
-                            videoId = params.resourceId.videoId;
-                        }
-                    }
-                    else if (entry.kind == "youtube#playlistItem") {
-                        if (entry.snippet.resourceId.kind == "youtube#video") {
-                            videoId = entry.snippet.resourceId.videoId;
-                        }
-                    }
-                    else if (entry.id.kind && entry.id.kind == "youtube#video") {
-                        videoId = entry.id.videoId;
-                    }
+                        var videoId = getVideoId(entry);
                         /*if (entry.author && entry.author[0].name) {
                             metadata.author = entry.author[0].name.$t;
                         }*/
@@ -3512,10 +3493,12 @@
 
                             var durationString = video.contentDetails.duration;
                             var match = durationString.match(/PT(.+?)M(.+?)S/);
-                            var minutes = parseInt(match[1]);
-                            var seconds = parseInt(match[2]);
-                            metadata.duration = showtime.durationToString(minutes * 60 + seconds);
-                            metadata.runtime = metadata.duration;
+                            if (match) {
+                                var minutes = parseInt(match[1]);
+                                var seconds = parseInt(match[2]);
+                                metadata.duration = showtime.durationToString(minutes * 60 + seconds);
+                                metadata.runtime = metadata.duration;
+                            }
 
                             metadata.views = video.statistics.viewCount;
                             metadata.favorites = video.statistics.favoriteCount;
