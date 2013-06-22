@@ -106,6 +106,10 @@
         service.safeSearch = v;
     });
 
+    settings.createBool("advancedBrowseV3", "Show more information in pages using API v3", false, function(v) {
+        service.advancedBrowseV3 = v;
+    });
+
     settings.createDivider('General Feed Settings');
 
     settings.createMultiOpt("category", "Category", categories, function(v){
@@ -3438,28 +3442,31 @@
                 }
 
                 var videoIds = [];
-                for (var i in data.items) {
-                    var entry = data.items[i];
-
-                    var videoId = getVideoId(entry);
-                    if (videoId)
-                        videoIds.push(videoId);
-                }
-
-                var data1 = apiV3.download({
-                    "path": "https://www.googleapis.com/youtube/v3/videos",
-                    "args": {
-                        "part": "id,snippet,contentDetails,statistics,status,topicDetails",
-                        "id": videoIds.join(",")
-                    }
-                });
-
-                data1 = data1.response;
-
                 var videoData = {};
-                for (var i in data1.items) {
-                    var video = data1.items[i];
-                    videoData[video.id] = video;
+
+                if (service.advancedBrowseV3) {
+                    for (var i in data.items) {
+                        var entry = data.items[i];
+
+                        var videoId = getVideoId(entry);
+                        if (videoId)
+                            videoIds.push(videoId);
+                    }
+
+                    var data1 = apiV3.download({
+                        "path": "https://www.googleapis.com/youtube/v3/videos",
+                        "args": {
+                            "part": "id,snippet,contentDetails,statistics,status,topicDetails",
+                            "id": videoIds.join(",")
+                        }
+                    });
+
+                    data1 = data1.response;
+
+                    for (var i in data1.items) {
+                        var video = data1.items[i];
+                        videoData[video.id] = video;
+                    }
                 }
 
                 for (var i in data.items) {
@@ -3471,45 +3478,47 @@
 
                         var metadata = {};
 
-                        var videoId = getVideoId(entry);
-                        /*if (entry.author && entry.author[0].name) {
-                            metadata.author = entry.author[0].name.$t;
-                        }*/
+                        if (service.advancedBrowseV3) {
+                            var videoId = getVideoId(entry);
+                            /*if (entry.author && entry.author[0].name) {
+                                metadata.author = entry.author[0].name.$t;
+                            }*/
 
-                        /*if (entry.app$control && entry.app$control.yt$state) {
-                            if (entry.app$control.yt$state.name == "restricted" && entry.app$control.yt$state.reasonCode == "requesterRegion") metadata.restricted = true;
-                        }*/
+                            /*if (entry.app$control && entry.app$control.yt$state) {
+                                if (entry.app$control.yt$state.name == "restricted" && entry.app$control.yt$state.reasonCode == "requesterRegion") metadata.restricted = true;
+                            }*/
                     
-                        /*if (entry.media$group && entry.media$group.media$rating) {
-                            metadata.certification = entry.media$group.media$rating[0].$t.toString().toUpperCase();
-                        }*/
+                            /*if (entry.media$group && entry.media$group.media$rating) {
+                                metadata.certification = entry.media$group.media$rating[0].$t.toString().toUpperCase();
+                            }*/
 
-                        if (videoId) {
-                            var video = videoData[videoId];
+                            if (videoId) {
+                                var video = videoData[videoId];
 
-                            metadata.published = getDistanceTime(getTime(video.snippet.publishedAt));
+                                metadata.published = getDistanceTime(getTime(video.snippet.publishedAt));
 
-                            metadata.hd = video.contentDetails.definition == "hd";
+                                metadata.hd = video.contentDetails.definition == "hd";
 
-                            var durationString = video.contentDetails.duration;
-                            var match = durationString.match(/PT(.+?)M(.+?)S/);
-                            if (match) {
-                                var minutes = parseInt(match[1]);
-                                var seconds = parseInt(match[2]);
-                                metadata.duration = showtime.durationToString(minutes * 60 + seconds);
-                                metadata.runtime = metadata.duration;
+                                var durationString = video.contentDetails.duration;
+                                var match = durationString.match(/PT(.+?)M(.+?)S/);
+                                if (match) {
+                                    var minutes = parseInt(match[1]);
+                                    var seconds = parseInt(match[2]);
+                                    metadata.duration = showtime.durationToString(minutes * 60 + seconds);
+                                    metadata.runtime = metadata.duration;
+                                }
+
+                                metadata.views = video.statistics.viewCount;
+                                metadata.favorites = video.statistics.favoriteCount;
+                                metadata.likes = parseInt(video.statistics.likeCount);
+                                metadata.dislikes = parseInt(video.statistics.dislikeCount);
+                                metadata.likesPercentage = Math.round((metadata.likes / 
+                                    (metadata.likes + metadata.dislikes)) * 100);
+                                /*metadata.likesPercentage_str = '<font size="3" color="99CC66"> ( ' + 
+                                    metadata.likesPercentage + '% )</font>';*/
+                                metadata.likesPercentage_str = metadata.likesPercentage + '%';
+                                metadata.rating = metadata.likesPercentage;
                             }
-
-                            metadata.views = video.statistics.viewCount;
-                            metadata.favorites = video.statistics.favoriteCount;
-                            metadata.likes = parseInt(video.statistics.likeCount);
-                            metadata.dislikes = parseInt(video.statistics.dislikeCount);
-                            metadata.likesPercentage = Math.round((metadata.likes / 
-                                (metadata.likes + metadata.dislikes)) * 100);
-                            /*metadata.likesPercentage_str = '<font size="3" color="99CC66"> ( ' + 
-                                metadata.likesPercentage + '% )</font>';*/
-                            metadata.likesPercentage_str = metadata.likesPercentage + '%';
-                            metadata.rating = metadata.likesPercentage;
                         }
 
                         metadata.icon = parseThumbnail(entry);
