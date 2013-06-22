@@ -1,13 +1,24 @@
 ### 2.2:
 - Add: Support for Live Streaming videos using HLS
 - Add: Show videos that authenticated user liked
+- Add: Searchers for API v3 (old searchers are still active)
 - Add: Authentication for API v3
 - Add: New URI routes for video playback
+- Add: My Activity (provides recommendations, videos that users subscribed liked/favorited)
+- Add: Subscribe to User in User Profile
 - Add: Initial support for Guide Categories
-- Add: Initial support for Video Categories
-- Add: Like, Dislike, Add to Favorites, Add to Watch Later and Comment to video advanced mode
+- Add: Initial support for Video Categories (old "Browse Videos" section)
+- Add: Video Advanced Mode actions:
+* Like
+* Dislike
+* Add to Favorites
+* Add to Watch Later
+* Comment
+- Add: Show more information for videos in pages using API v3 (enable in Settings)
 - Enhancement: Improved User Profile
 - Enhancement: Started work to upgrade plugin from API v2 to v3
+
+Note: Thanks to opium2k for favorites icon in video advanced mode.
 
 ### 2.0.4:
 - Fix: After an upgrade, the plugin would fail sometimes to boot up
