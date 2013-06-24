@@ -1,3 +1,6 @@
+### 2.2.1:
+- Fix: SEarch for space separated queries 
+
 ### 2.2:
 - Add: Support for Live Streaming videos using HLS
 - Add: Show videos that authenticated user liked
