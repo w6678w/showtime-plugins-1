@@ -2250,7 +2250,12 @@
 	plugin.addURI(PREFIX + ":playlist:add:(.*)", function(page, args0) {
 		args0 = showtime.JSONDecode(unescape(args0));
 		if (args0.playlistId) {
-			apiV3.playlistItems.insert(args0.playlistId, args0.videoId);
+			if (apiV3.playlistItems.insert(args0.playlistId, args0.videoId)) {
+				showtime.notify("Video added succesfully", 2);
+			}
+			else {
+				showtime.notify("There was one error while trying to add video", 3);
+			}
 			//page.redirect(args0.referrer);
 			page.redirect(PREFIX + ":user:default");
 		}
