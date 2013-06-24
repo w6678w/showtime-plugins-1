@@ -938,14 +938,14 @@
             
                 if (url.indexOf('?')!=-1) {
                     var args = url.slice(url.indexOf('?')+1);            
-                    args=args.split('&')
+                    args=args.split('&');
 
                     for (var i in args) {
                         var arg = args[i];
-                        var arg_tmp = arg.split('=')
-                        api.args_common[arg_tmp[0]]=arg_tmp[1]
+                        var arg_tmp = arg.split('=');
+                        api.args_common[arg_tmp[0]]=arg_tmp[1].replace(/ /g, "%20");
                     }
-                    url=url.slice(0, url.indexOf('?'))
+                    url=url.slice(0, url.indexOf('?'));
                 }
 
                 var link = putUrlArgs(url, api.args_common);
@@ -3799,7 +3799,7 @@
         try {
             pageController(page, function(offset) {	
                 api.args_common['start-index'] = offset;
-                api.args_common.q = query;
+                api.args_common.q = escape(query);
 
                 page.appendItem(PREFIX + ':feed:sort:' + escape("http://gdata.youtube.com/schemas/2007#video") + ':' + escape("https://gdata.youtube.com/feeds/api/videos/?q=" + query),"directory", {title: "Sort by..."});
                 page.appendItem(PREFIX + ':feed:duration:' + escape("https://gdata.youtube.com/feeds/api/videos/?q=" + query),"directory", {title: "Filter by duration"});
@@ -3820,7 +3820,7 @@
             	var args = {
             		"part": "id,snippet",
             		"type": "video",
-            		"q": query
+            		"q": escape(query)
             	};
             	if (nextPageToken)
             		args.pageToken = nextPageToken;
@@ -3842,7 +3842,7 @@
         try {
             pageController(page, function(offset) {	
                 api.args_common['start-index'] = offset;
-                api.args_common.q = query;
+                api.args_common.q = escape(query);
 
                 var doc = showtime.JSONDecode(showtime.httpGet("https://gdata.youtube.com/feeds/api/playlists/snippets",
                     api.args_common, api.headers_common).toString());
@@ -3862,7 +3862,7 @@
             	var args = {
             		"part": "id,snippet",
             		"type": "playlist",
-            		"q": query
+            		"q": escape(query)
             	};
             	if (nextPageToken)
             		args.pageToken = nextPageToken;
@@ -3884,7 +3884,7 @@
         try {
             pageController(page, function(offset) {	
                 api.args_common['start-index'] = offset;
-                api.args_common.q = query;
+                api.args_common.q = escape(query);
                 return showtime.JSONDecode(showtime.httpGet("https://gdata.youtube.com/feeds/api/channels",
                     api.args_common, api.headers_common).toString());
             });
@@ -3901,7 +3901,7 @@
             	var args = {
             		"part": "id,snippet",
             		"type": "channel",
-            		"q": query
+            		"q": escape(query)
             	};
             	if (nextPageToken)
             		args.pageToken = nextPageToken;
