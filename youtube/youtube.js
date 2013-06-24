@@ -2117,14 +2117,159 @@
             page.onEvent('comment', function() {
                 api.comment(videoId);
             });
-    
-            page.metadata.logo = plugin.path + "logo.png";
+
+            if (apiV3.auth.authenticated) {
+            	page.appendAction("pageevent", "addToPlaylist", true, {                  
+           		    title: 'Add to Playlist',
+            	    icon: plugin.path + "views/img/add.png",
+            	    listActions: true      
+            	});
+            	page.onEvent('addToPlaylist', function() {
+            	    var args = {
+            			"videoId": videoId
+            		};
+            	    page.redirect(PREFIX + ':playlist:add:' + escape(showtime.JSONEncode(args)));
+            	});
+        	}
         }
+    
+        page.metadata.logo = plugin.path + "logo.png";
 
         events = true;
     
         page.loading = false;
     });
+
+	function pageControllerAddToPlaylist(page, args0, loader) {
+        page.contents = 'list';
+        var offset = 1;
+        var total_items = 0;
+        var max_items = service.entries;
+
+        function paginator() {      
+            var num = 0;
+
+            var nextPageToken = null;
+
+            while(total_items < max_items) {	
+                var data = loader(nextPageToken);
+
+                if (data.nextPageToken)
+                	nextPageToken = data.nextPageToken;
+
+                if (data.pageInfo) {
+                	page.entries = data.pageInfo.totalResults;
+                	total_items += data.pageInfo.resultsPerPage;
+                }
+                else {
+                	page.entries = 1;
+                	total_items = 1;
+                }
+
+                if (page.entries < max_items)
+                    max_items = page.entries;
+
+                if (page.entries > service.entries)
+                    page.entries = service.entries;
+                var c = 0;
+
+                if (data.items.length == 0) {
+                    page.appendItem(PREFIX + ':start', 'directory', { title: 'This feed does not contain any item. Sorry about that.' });
+                }
+
+                for (var i in data.items) {
+                    var entry = data.items[i];
+                
+                    try {
+                        c++;
+                        var id, url;
+
+                        var metadata = {};
+
+                        metadata.icon = parseThumbnail(entry);
+
+                        var playlistTitle = entry.snippet.title;
+
+                        var color = 'FFFFFF';
+                        var title = '<font size="3" color="' + color + '">' + playlistTitle + '</font>';
+
+                        metadata.title = new showtime.RichText(title);
+
+                        var desc = "";
+                        if (entry.snippet.description) {
+                            desc = entry.snippet.description;
+                        }
+
+                        var lines = "";
+                        var desc_split = desc.split("\n");
+                        for (var i = 0; i < desc_split.length && i < 2; i++) {
+                            lines += desc_split[i] + "\n";
+                        }  
+
+                        metadata.description = new showtime.RichText('<font size="2" color="EEEEEE">' + lines + '</font>');
+
+                        var images = [];
+                        images.push({
+                        	width: 400,
+                        	height: 400,
+                        	url: metadata.icon
+                        });
+                        images.push({
+                            width: 20,
+                            height: 20,
+                            url: plugin.path + "views/img/nophoto.bmp"});
+                        images = "imageset:" + showtime.JSONEncode(images);
+                        metadata.icon = images;
+
+						if (entry.kind == "youtube#playlist") {
+							var args = args0;
+                        	args.playlistId = entry.id;
+                    		page.appendItem(PREFIX + ":playlist:add:" + escape(showtime.JSONEncode(args)), "directory", metadata);
+                        }
+                    }
+                    catch(err) {
+                        e(err);
+                    }
+                }
+                page.loading = false;	
+                num += c;
+
+                if(c == 0 || offset > api.args_common['max-results'] || num > parseInt(service.entries) || c == max_items || total_items >= max_items)	  
+                    break;
+            }
+            offset += num;
+
+            return offset < page.entries;    
+        }
+    
+        page.type = "directory";
+        paginator();    
+        page.paginator = paginator;
+    }
+
+	plugin.addURI(PREFIX + ":playlist:add:(.*)", function(page, args0) {
+		args0 = showtime.JSONDecode(unescape(args0));
+		if (args0.playlistId) {
+			apiV3.playlistItems.insert(args0.playlistId, args0.videoId);
+			//page.redirect(args0.referrer);
+			page.redirect(PREFIX + ":user:default");
+		}
+		else {
+			pageControllerAddToPlaylist(page, args0, function(nextPageToken) {
+            	var args = {
+            		"part": "id,snippet",
+            		"mine": "true",
+            		"maxResults": 50
+            	};
+            	if (nextPageToken)
+            		args.pageToken = nextPageToken;
+            	var data = apiV3.playlists.list(args);
+            	data = data.response;
+
+                return data;
+            });
+		}
+	});
   
     // We need to use this function so we can pass the correct title of video
     plugin.addURI(PREFIX + ":video:stream:(.*):(.*):(.*)", function(page, title, id, video_url) {
@@ -2794,6 +2939,13 @@
                 item.addOptURL("Redirect to Season", PREFIX + ':feed:' + escape(link.href + "/episodes"));
             }
         }
+
+        if (apiV3.auth.authenticated) {
+            var args = {
+            	"videoId": item.id
+            };
+            item.addOptURL("Add to Playlist", PREFIX + ':playlist:add:' + escape(showtime.JSONEncode(args)));
+        }
     }
 
     function sort(items, field, reverse) {
@@ -3090,6 +3242,26 @@
             "list": function(args) {
                 var url = "https://www.googleapis.com/youtube/v3/playlistItems";
                 return download(url, args, false);
+            },
+
+            "insert": function(playlistId, videoId) {
+            	var json = {
+            		"snippet": {
+            			"playlistId": playlistId,
+            			"resourceId": {
+            				"kind": "youtube#video",
+            				"videoId": videoId
+            			}
+            		}
+            	};
+
+            	var postdata = showtime.JSONEncode(json);
+            	var url = "https://www.googleapis.com/youtube/v3/playlistItems";
+            	var data = download(url, {
+            		"part": "snippet"
+            	}, false, true, postdata);
+
+            	return !data.error && data.response.snippet.playlistId == playlistId;
             }            
         }
 
@@ -3097,7 +3269,7 @@
             "list": function(args) {
                 var url = "https://www.googleapis.com/youtube/v3/playlists";
                 return download(url, args, false);
-            }            
+            }         
         }
 
         var search = {
@@ -3274,7 +3446,7 @@
 
     String.prototype.trim=function(){return this.replace(/^\s+|\s+$/g, '');};
 
-    function setVideoItemOptions(item) {
+    function setVideoItemOptions(item, page) {
         if (item.channelId)
             item.addOptURL("More from this user", PREFIX + ':user:' + item.channelId);
 
@@ -3315,6 +3487,13 @@
             };
 
             item.addOptURL("Related Videos", PREFIX + ":v3:request:" + escape(showtime.JSONEncode(args)));
+
+            if (apiV3.auth.authenticated) {
+            	var args = {
+            		"videoId": item.videoId
+            	};
+                item.addOptURL("Add to Playlist", PREFIX + ':playlist:add:' + escape(showtime.JSONEncode(args)));
+            }
         }
 
         /*for (var i in entry.link) {
@@ -3349,7 +3528,7 @@
         var item = page.appendItem(PREFIX + ":video:" + entry.videoId, "video", metadata);
         for (var i in entry)
             item[i] = entry[i];
-        setVideoItemOptions(item);
+        setVideoItemOptions(item, page);
         return item;
     }
 

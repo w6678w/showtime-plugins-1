@@ -1,5 +1,8 @@
+### 2.3:
+- Add: Add video to playlist (available in item menu in video listing and in Actions in Advanced Mode)
+
 ### 2.2.1:
-- Fix: SEarch for space separated queries 
+- Fix: Search for space separated queries 
 
 ### 2.2:
 - Add: Support for Live Streaming videos using HLS
