@@ -1,5 +1,5 @@
 ### 2.2.5:
-- Add: Add video to playlist (available in item menu in video listing and in Actions in Advanced Mode)
+- Add: Add video to existing playlist (available in item menu in video listing and in Actions in Advanced Mode)
 - Add: Itemhook "Search in Youtube" for video entries in Showtime (in item menu, 
 you can use this feature to search for videos in Youtube given any title of a video item in Showtime) 
 (require 4.3.257)
