@@ -237,9 +237,27 @@
             showtime.notify('Authenticated succesfully', 2);
     });
 
+
+    settings.createDivider("Developer Settings");
+
+    settings.createBool("enableDebug", "Enable Debug messages", false, function(v) { service.enableDebug = v; });
+
     var website = new websiteApi();
     var items = [];
     var items_tmp = [];
+
+    if (showtime.currentVersionInt >= 4 * 10000000 +  3 * 100000 + 257) {
+        plugin.addItemHook({
+            title: "Search in Youtube",
+            itemtype: "video",
+            handler: function(obj, nav) {
+                var title = obj.metadata.title;
+                title = title.replace(/<.+?>/g, "").replace(/\[.+?\]/g, "");
+                t("Search in Youtube: " + title);
+                nav.openURL(PREFIX + ":feed:" + escape("https://gdata.youtube.com/feeds/api/videos?q=" + title));
+            }
+        });
+    }
 
     function startPage(page) {
         ui.background = user_preferences.background;
@@ -1842,10 +1860,12 @@
     }
     
     function t(message) {
+        if (!service.enableDebug) return;
         showtime.trace(message, plugin.getDescriptor().id);
     }
     
     function p(message) {
+        if (!service.enableDebug) return;
         showtime.print(message);
     }
 
@@ -2109,6 +2129,20 @@
                 api.watchLater(videoId); 
             });
 
+            if (apiV3.auth.authenticated) {
+                page.appendAction("pageevent", "addToPlaylist", true, {                  
+                    title: 'Add to Playlist',
+                    icon: plugin.path + "views/img/add.png",
+                    listActions: true      
+                });
+                page.onEvent('addToPlaylist', function() {
+                    var args = {
+                        "videoId": videoId
+                    };
+                    page.redirect(PREFIX + ':playlist:add:' + escape(showtime.JSONEncode(args)));
+                });
+            }
+
             page.appendAction("pageevent", "comment", true, {                  
                 title: 'Comment',
                 icon: plugin.path + "views/img/comment.png",
@@ -2117,20 +2151,6 @@
             page.onEvent('comment', function() {
                 api.comment(videoId);
             });
-
-            if (apiV3.auth.authenticated) {
-            	page.appendAction("pageevent", "addToPlaylist", true, {                  
-           		    title: 'Add to Playlist',
-            	    icon: plugin.path + "views/img/add.png",
-            	    listActions: true      
-            	});
-            	page.onEvent('addToPlaylist', function() {
-            	    var args = {
-            			"videoId": videoId
-            		};
-            	    page.redirect(PREFIX + ':playlist:add:' + escape(showtime.JSONEncode(args)));
-            	});
-        	}
         }
     
         page.metadata.logo = plugin.path + "logo.png";
@@ -2914,6 +2934,13 @@
             api.watchLater(this.id) 
         });
 
+        if (apiV3.auth.authenticated) {
+            var args = {
+                "videoId": item.id
+            };
+            item.addOptURL("Add to Playlist", PREFIX + ':playlist:add:' + escape(showtime.JSONEncode(args)));
+        }
+
         for (var i in entry.link) {
             var link = entry.link[i];
 
@@ -2943,13 +2970,6 @@
             if (link.rel == "http://gdata.youtube.com/schemas/2007#video.season") {
                 item.addOptURL("Redirect to Season", PREFIX + ':feed:' + escape(link.href + "/episodes"));
             }
-        }
-
-        if (apiV3.auth.authenticated) {
-            var args = {
-            	"videoId": item.id
-            };
-            item.addOptURL("Add to Playlist", PREFIX + ':playlist:add:' + escape(showtime.JSONEncode(args)));
         }
     }
 
@@ -3274,7 +3294,23 @@
             "list": function(args) {
                 var url = "https://www.googleapis.com/youtube/v3/playlists";
                 return download(url, args, false);
-            }         
+            },
+
+            "insert": function(title) {
+                var json = {
+                    "snippet": {
+                        "title": title
+                    }
+                };
+
+                var postdata = showtime.JSONEncode(json);
+                var url = "https://www.googleapis.com/youtube/v3/playlists";
+                var data = download(url, {
+                    "part": "snippet"
+                }, false, true, postdata);
+
+                return !data.error && data.response.snippet.title == title;
+            }        
         }
 
         var search = {
@@ -3441,11 +3477,13 @@
     }
 
     function debug(message, id) {
+        if (!service.enableDebug) return;
         if (!id) id = "YOUTUBE";
         showtime.trace(message, id);
     }
 
     function d(message) {
+        if (!service.enableDebug) return;
         showtime.trace(message, "YOUTUBE");
     }
 
