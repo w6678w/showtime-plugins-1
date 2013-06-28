@@ -246,7 +246,7 @@
     var items = [];
     var items_tmp = [];
 
-    if (showtime.currentVersionInt >= 4 * 10000000 +  3 * 100000 + 257) {
+    if (showtime.currentVersionInt >= 4 * 10000000 +  3 * 100000 + 261) {
         plugin.addItemHook({
             title: "Search in Youtube",
             itemtype: "video",
