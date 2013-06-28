@@ -1,4 +1,4 @@
-### 2.3:
+### 2.2.5:
 - Add: Add video to playlist (available in item menu in video listing and in Actions in Advanced Mode)
 
 ### 2.2.1:
