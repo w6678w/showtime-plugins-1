@@ -1,7 +1,7 @@
 /**
- * TMDB plugin for Media Player Showtime
+ * TMDb plugin for Media Player Showtime
  *
- *  Copyright (C) 2012 Fábio Ferreira (facanferff)
+ *  Copyright (C) 2012-2013 Fábio Ferreira (facanferff)
  * 
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -29,6 +29,9 @@
 					 plugin_info.synopsis);
 
     var store_auth = plugin.createStore('auth', true);
+    store_auth.session;
+    store_auth.id;
+    store_auth.username;
     if (!store_auth.session) {
         store_auth.session = "";
     }
@@ -37,14 +40,17 @@
 				 plugin.path + "logo.png",
 				 "Plugin developed by facanferff, creator of Youtube, Navi-X and Oceanus plugins.");
 
-    settings.createString("searchSource", "Search Source", "http://www.navixtreme.com/cgi-bin/boseman/Scrapers/ct_gsearchv20?q=srcsite//", function (v) { service.searchSource = v; });
+    settings.createString("searchSource1", "Search Source #1", "http://www.navixtreme.com/cgi-bin/boseman/Scrapers/ct_gsearchv20?q=srcsite//", function (v) { service.searchSource1 = v; });
+    settings.createString("searchSource2", "Search Source #2", "http://julesallen77.com/Navi-J/imdb/search.php?page=", function (v) { service.searchSource2 = v; });
+    settings.createString("searchSource3", "Search Source #3", "", function (v) { service.searchSource3 = v; });
 
     settings.createDivider("TMDB View");
     settings.createBool("cast", "Show Cast", true, function (v) { service.cast = v; });
     settings.createBool("crew", "Show Crew", true, function (v) { service.crew = v; });
-    settings.createBool("trailers", "Show Trailers", true, function (v) { service.trailers = v; });
-    settings.createBool("collection", "Show Collection", true, function (v) { service.collection = v; });
-    settings.createBool("similar_movies", "Show Similar Movies", true, function (v) { service.similar_movies = v; });
+    settings.createBool("trailers", "Show Trailers", false, function (v) { service.trailers = v; });
+    settings.createBool("collection", "Show Collection", false, function (v) { service.collection = v; });
+    settings.createBool("lists", "Show Lists that have a movie", false, function (v) { service.lists = v; });
+    settings.createBool("similar_movies", "Show Similar Movies", false, function (v) { service.similar_movies = v; });
     settings.createBool("extras", "Show Extras", true, function (v) { service.extras = v; });
 
     settings.createDivider("Home page");
@@ -52,6 +58,7 @@
     settings.createBool("now_playing", "Show Now Playing", true, function (v) { service.now_playing = v; });
     settings.createBool("popular", "Show Popular", true, function (v) { service.popular = v; });
     settings.createBool("top_rated", "Show Top Rated", true, function (v) { service.top_rated = v; });
+    settings.createBool("people_popular", "Show Popular People", true, function (v) { service.people_popular = v; });
 
     var api = new TMDB();
     api.init();
@@ -61,6 +68,8 @@
     var kim = new KidsInMind();
 
     function pageMenu(page) {
+        page.metadata.background = plugin.path + "views/img/background.png";
+        
         page.appendAction("navopen", PREFIX + ":standard:lists", true, { title: "Standard Lists", icon: plugin.path + "views/img/list.png", hidden: true });
         page.appendAction("navopen", PREFIX + ":genre:list", true, { title: "Genres", icon: plugin.path + "views/img/list.bmp", hidden: true });
 
@@ -96,18 +105,25 @@
         function paginator() {
             while(true) {    
                 var data = loader(offset);
+
                 page.entries = data.total_results;
                 var total_pages = data.total_pages;
 
                 var items = data.results;
                 for each (var it in items) {
-                    var metadata = {
-                        title: it.original_title,
-                        icon: "tmdb:image:poster:" + it.poster_path
+                    try {
+                        var metadata = {
+                            title: it.original_title,
+                            icon: "tmdb:image:poster:" + it.poster_path
+                        }
+                        if (it.backdrop_path)
+                            metadata.background = "tmdb:image:backdrop:" + it.backdrop_path;
+                        page.appendItem(PREFIX + ":movie:" + it.id + ":2", "directory", metadata);
                     }
-                    if (it.backdrop_path)
-                        metadata.background = "tmdb:image:backdrop:" + it.backdrop_path;
-                    page.appendItem(PREFIX + ":movie:" + it.id + ":2", "directory", metadata);
+                    catch (ex) {
+                        t("Skipping 1 item because: ");
+                        e(ex);
+                    }
                 }
 
                 page.loading = false;
@@ -117,6 +133,7 @@
 
                 offset++;
                 page.contents = "movies";
+                page.metadata.glwview = plugin.path + "views/posters.view";
             }
 
             return offset < page.entries;
@@ -137,6 +154,99 @@
         });
 
         page.metadata.title = "List";
+
+        page.loading = false;
+    });
+
+    plugin.addURI(PREFIX + ":lists:add:(.*)", function (page, media_id) {
+        page.type = "directory";
+        page.loading = false;
+
+        if (!api.authenticated()) {
+            page.error("User should be authenticated in order to add an item to a list.");
+            return;
+        }
+
+        page.metadata.glwview = plugin.path + "views/loading.view";
+        
+        var item1 = api.getData("account", api.id, "lists");
+        if (item1 && item1.total_results) {
+            var lists = [];
+            for (var i in item1.results) {
+                try {
+                    var list = item1.results[i];
+                    var image = "tmdb:image:profile:" + list.poster_path;
+                    if (!list.poster_path || list.poster_path == "null") image = plugin.path + "views/img/nophoto.png";
+                    page.appendItem(PREFIX + ":list:" + list.id + ":add:" + media_id, "directory", {
+                        title: list.name,
+                        icon: image
+                    });
+                }
+                catch (ex) {
+                    showtime.trace("Skipped 1 list because: ");
+                    e(ex);
+                }
+            }
+        }
+        else {
+            page.error("It was not possible to satisfy the request.");
+            return;
+        }
+
+        page.appendItem(PREFIX + ":list:new:add:" + media_id, "directory", {
+            title: "New list",
+            icon: plugin.path + "views/img/add_list.png"
+        });
+
+        page.contents = "movies";
+        page.metadata.glwview = plugin.path + "views/posters.view";
+
+        page.metadata.title = "Add to list";
+
+        page.loading = false;
+    });
+
+    plugin.addURI(PREFIX + ":list:new:add:(.*)", function (page, media_id) {
+        page.type = "directory";
+
+        page.loading = false;
+
+        var query = showtime.textDialog('Title of the list: ', true, false);
+
+        if (query.rejected) {
+            page.error('User didn\'t specify the name of the list.');
+            return;
+        }
+            
+        var name = query.input;
+        if (name.length == 0) {
+            page.error('Empty list\'s name.');
+            return;
+        }
+
+        var data = api.createList(name);
+        if (!data || data.status_code != 1) {
+            if (data && data.status_message)
+                page.error(data.status_message);
+            else
+                page.error("There was an error while trying to create the list");
+            return;
+        }
+
+        for (var i in args) {
+            p(i + ": " + args[i]);
+        }
+
+        var list_id = data.list_id;
+
+        var res = api.addListItem(list_id, media_id);
+        if (res != null) {
+            showtime.notify(res, 3);
+        }
+        else {
+            showtime.notify("Movie added successfully to list", 3);
+        }
+        page.redirect(PREFIX + ":movie:" + media_id + ":1");
 
         page.loading = false;
     });
@@ -205,7 +315,7 @@
 
         pageMenu(page);
 
-        var search = showtime.textDialog('Search for Movies/Persons/Companies:', true, false);
+        var search = showtime.textDialog('Search for Movies/Persons/Companies/Lists:', true, false);
 
         if (search.rejected) {
             return;
@@ -218,12 +328,9 @@
         //var searchstring = unescape(input);
 
         var search_movies = [];
-        var search_persons = [];
-
-        var data = showtime.JSONDecode(showtime.httpGet("http://api.themoviedb.org/3/search/movie", {
-            'api_key': api.key,
+        var data = api.getData("search", "movie", null, null, {
             'query': searchstring
-        }).toString());
+        });
 
         for (var i in data.results) {
             var it = data.results[i];
@@ -237,10 +344,10 @@
         page.appendPassiveItem("list", search_movies, { title: "Search Movies" });
 
 
-        var data = showtime.JSONDecode(showtime.httpGet("http://api.themoviedb.org/3/search/person", {
-            'api_key': api.key,
+        var search_persons = [];
+        var data = api.getData("search", "person", null, null, {
             'query': searchstring
-        }).toString());
+        });
 
         for (var i in data.results) {
             var item = data.results[i];
@@ -257,32 +364,55 @@
         page.appendPassiveItem("list", search_persons, { title: "Search Persons" });
 
 
-        var search_companies = [];
-        var data = showtime.JSONDecode(showtime.httpGet("http://api.themoviedb.org/3/search/company", {
-            'api_key': api.key,
+        var search_lists = [];
+        var data = api.getData("search", "list", null, null, {
             'query': searchstring
-        }).toString());
+        });
 
-        for (var i in data.results) {
-            var item = data.results[i];
-            var image = item.logo_path;
-            if (!image || image == "null") image = plugin.path + "views/img/nophoto.png";
-            else image = "tmdb:image:logo:" + image;
-            search_companies.push({
-                title: item.name,
-                image: image,
-                url: PREFIX + ":company:" + item.id
-            });
+        if (data) {
+            for (var i in data.results) {
+                var item = data.results[i];
+                var image = item.poster_path;
+                if (!image || image == "null") image = plugin.path + "views/img/nophoto.png";
+                else image = "tmdb:image:profile:" + image;
+                search_lists.push({
+                    title: item.name,
+                    image: image,
+                    url: PREFIX + ":list:" + item.id
+                });
+            }
+
+            page.appendPassiveItem("list", search_lists, { title: "Search Lists" });
         }
 
-        page.appendPassiveItem("list", search_companies, { title: "Search Companies" });
+
+        var search_companies = [];
+        var data = api.getData("search", "company", null, null, {
+            'query': searchstring
+        });
+
+        if (!data) {
+            for (var i in data.results) {
+                var item = data.results[i];
+                var image = item.logo_path;
+                if (!image || image == "null") image = plugin.path + "views/img/nophoto.png";
+                else image = "tmdb:image:logo:" + image;
+                search_companies.push({
+                    title: item.name,
+                    image: image,
+                    url: PREFIX + ":company:" + item.id
+                });
+            }
+
+            page.appendPassiveItem("list", search_companies, { title: "Search Companies" });
+        }
 
         page.loading = false;
     });
 
-    //plugin.addURI(PREFIX + ":standard:lists", function (page) {
     function startPage(page) {
         page.type = "directory";
+        page.metadata.background = plugin.path + "views/img/";
         page.metadata.glwview = plugin.path + "views/loading.view";
         page.loading = false;
 
@@ -290,122 +420,149 @@
 
         pageMenu(page);
 
+        page.metadata.message = "Preparing to parse Upcoming Movies list";
+
         if (service.upcoming) {
-        var data = api.getData("movie", null, "upcoming");
-        if (data) {
-            var upcoming = [];
-            for (var i in data.results) {
-                var it = data.results[i];
-                var image = "tmdb:image:profile:" + it.poster_path;
-                if (!it.poster_path || it.poster_path == "null") image = plugin.path + "views/img/nophoto.png";
+            var data = api.getData("movie", null, "upcoming");
+            if (data) {
+                var upcoming = [];
+                for (var i in data.results) {
+                    var it = data.results[i];
+                    var image = "tmdb:image:profile:" + it.poster_path;
+                    if (!it.poster_path || it.poster_path == "null") image = plugin.path + "views/img/nophoto.png";
 
-                var background = "tmdb:image:backdrop:" + it.backdrop_path;
-                if (!it.backdrop_path || it.backdrop_path == "null") background = plugin.path + "views/img/background.png";
+                    var background = "tmdb:image:backdrop:" + it.backdrop_path;
+                    if (!it.backdrop_path || it.backdrop_path == "null") background = plugin.path + "views/img/background.png";
 
+                    upcoming.push({
+                        title: it.title,
+                        image: image,
+                        url: PREFIX + ":movie:" + it.id + ":1",
+                        background: background
+                    });
+                }
                 upcoming.push({
-                    title: it.title,
-                    image: image,
-                    url: PREFIX + ":movie:" + it.id + ":1",
-                    background: background
+                    title: "See more",
+                    image: plugin.path + "views/img/add.png",
+                    url: PREFIX + ":lists:upcoming"
                 });
+                page.appendPassiveItem("list", upcoming, { title: "Upcoming" });
             }
-            upcoming.push({
-                title: "See more",
-                image: plugin.path + "views/img/add.png",
-                url: PREFIX + ":lists:upcoming"
-            });
-            page.appendPassiveItem("list", upcoming, { title: "Upcoming" });
         }
-    }
 
+        page.metadata.message = "Preparing to parse Now Playing Movies list";
 
         if (service.now_playing) {
-        var data = api.getData("movie", null, "now_playing");
-        if (data) {
-            var now_playing = [];
-            for (var i in data.results) {
-                var it = data.results[i];
-                var image = "tmdb:image:profile:" + it.poster_path;
-                if (!it.poster_path || it.poster_path == "null") image = plugin.path + "views/img/nophoto.png";
+            var data = api.getData("movie", null, "now_playing");
+            if (data) {
+                var now_playing = [];
+                for (var i in data.results) {
+                    var it = data.results[i];
+                    var image = "tmdb:image:profile:" + it.poster_path;
+                    if (!it.poster_path || it.poster_path == "null") image = plugin.path + "views/img/nophoto.png";
 
-                var background = "tmdb:image:backdrop:" + it.backdrop_path;
-                if (!it.backdrop_path || it.backdrop_path == "null") background = plugin.path + "views/img/background.png";
+                    var background = "tmdb:image:backdrop:" + it.backdrop_path;
+                    if (!it.backdrop_path || it.backdrop_path == "null") background = plugin.path + "views/img/background.png";
 
+                    now_playing.push({
+                        title: it.title,
+                        image: image,
+                        url: PREFIX + ":movie:" + it.id + ":1",
+                        background: background
+                    });
+                }
                 now_playing.push({
-                    title: it.title,
-                    image: image,
-                    url: PREFIX + ":movie:" + it.id + ":1",
-                    background: background
+                    title: "See more",
+                    image: plugin.path + "views/img/add.png",
+                    url: PREFIX + ":lists:now_playing"
                 });
+                page.appendPassiveItem("list", now_playing, { title: "Now Playing" });
             }
-            now_playing.push({
-                title: "See more",
-                image: plugin.path + "views/img/add.png",
-                url: PREFIX + ":lists:now_playing"
-            });
-            page.appendPassiveItem("list", now_playing, { title: "Now Playing" });
         }
-    }
+
+        page.metadata.message = "Preparing to parse Popular Movies list";
 
         if (service.popular) {
-        var data = api.getData("movie", null, "popular");
-        if (data) {
-            var popular = [];
-            for (var i in data.results) {
-                var it = data.results[i];
-                var image = "tmdb:image:profile:" + it.poster_path;
-                if (!it.poster_path || it.poster_path == "null") image = plugin.path + "views/img/nophoto.png";
+            var data = api.getData("movie", null, "popular");
+            if (data) {
+                var popular = [];
+                for (var i in data.results) {
+                    var it = data.results[i];
+                    var image = "tmdb:image:profile:" + it.poster_path;
+                    if (!it.poster_path || it.poster_path == "null") image = plugin.path + "views/img/nophoto.png";
 
-                var background = "tmdb:image:backdrop:" + it.backdrop_path;
-                if (!it.backdrop_path || it.backdrop_path == "null") background = plugin.path + "views/img/background.png";
+                    var background = "tmdb:image:backdrop:" + it.backdrop_path;
+                    if (!it.backdrop_path || it.backdrop_path == "null") background = plugin.path + "views/img/background.png";
 
+                    popular.push({
+                        title: it.title,
+                        image: image,
+                        url: PREFIX + ":movie:" + it.id + ":1",
+                        background: background
+                    });
+                }
                 popular.push({
-                    title: it.title,
-                    image: image,
-                    url: PREFIX + ":movie:" + it.id + ":1",
-                    background: background
+                    title: "See more",
+                    image: plugin.path + "views/img/add.png",
+                    url: PREFIX + ":lists:popular"
                 });
+                page.appendPassiveItem("list", popular, { title: "Popular" });
             }
-            popular.push({
-                title: "See more",
-                image: plugin.path + "views/img/add.png",
-                url: PREFIX + ":lists:popular"
-            });
-            page.appendPassiveItem("list", popular, { title: "Popular" });
         }
-    }
+
+        page.metadata.message = "Preparing to parse Top Rated Movies list";
 
         if (service.top_rated) {
-        var data = api.getData("movie", null, "top_rated");
-        if (data) {
-            var top_rated = [];
-            for (var i in data.results) {
-                var it = data.results[i];
-                var image = "tmdb:image:profile:" + it.poster_path;
-                if (!it.poster_path || it.poster_path == "null") image = plugin.path + "views/img/nophoto.png";
+            var data = api.getData("movie", null, "top_rated");
+            if (data) {
+                var top_rated = [];
+                for (var i in data.results) {
+                    var it = data.results[i];
+                    var image = "tmdb:image:profile:" + it.poster_path;
+                    if (!it.poster_path || it.poster_path == "null") image = plugin.path + "views/img/nophoto.png";
 
-                var background = "tmdb:image:backdrop:" + it.backdrop_path;
-                if (!it.backdrop_path || it.backdrop_path == "null") background = plugin.path + "views/img/background.png";
+                    var background = "tmdb:image:backdrop:" + it.backdrop_path;
+                    if (!it.backdrop_path || it.backdrop_path == "null") background = plugin.path + "views/img/background.png";
 
+                    top_rated.push({
+                        title: it.title,
+                        image: image,
+                        url: PREFIX + ":movie:" + it.id + ":1",
+                        background: background
+                    });
+                }
                 top_rated.push({
-                    title: it.title,
-                    image: image,
-                    url: PREFIX + ":movie:" + it.id + ":1",
-                    background: background
+                    title: "See more",
+                    image: plugin.path + "views/img/add.png",
+                    url: PREFIX + ":lists:top_rated"
                 });
+                page.appendPassiveItem("list", top_rated, { title: "Top Rated" });
             }
-            top_rated.push({
-                title: "See more",
-                image: plugin.path + "views/img/add.png",
-                url: PREFIX + ":lists:top_rated"
-            });
-            page.appendPassiveItem("list", top_rated, { title: "Top Rated" });
         }
-    }
+
+        page.metadata.message = "Preparing to parse Popular People list";
+
+        if (service.people_popular) {
+            var data = api.getData("people", null, "popular");
+            if (data) {
+                var people_popular = [];
+                for (var i in data.results) {
+                    var it = data.results[i];
+                    var image = "tmdb:image:profile:" + it.profile_path;
+                    if (!it.profile_path || it.profile_path == "null") image = plugin.path + "views/img/nophoto.png";
+
+                    people_popular.push({
+                        title: it.name,
+                        image: image,
+                        url: PREFIX + ":person:" + it.id
+                    });
+                }
+                page.appendPassiveItem("list", people_popular, { title: "Popular People" });
+            }
+        }
 
         page.loading = false;
         page.metadata.glwview = plugin.path + "views/lists.view";
-        //});
     }
 
     function GoogleUrlShortener() {
@@ -474,7 +631,8 @@
     }
 
     function TMDB() {
-        this.key = "78d57cc453f9a284f483a0969ee65578";
+        //this.key = "78d57cc453f9a284f483a0969ee65578";
+        this.key = "7d96be668cf87445a253be87dcf164f0";
         this.session = "";
 
         this.init = function () {
@@ -485,11 +643,19 @@
         }
 
         this.authenticated = function () {
-            if (this.session && this.session != "") {
+            if (this.session && this.session != "" && this.id && this.id != "")
+                return true;
+
+            /*if (this.session && this.session != "") {
                 var data = this.getData("account");
+                if (!data) {
+                    t("There was an error while authenticating");
+                    this.session = null;
+                    return false;
+                }
                 this.id = data.id;
                 return true;
-            }
+            }*/
             else return false;
         }
 
@@ -500,7 +666,7 @@
             };
 
             try {
-                var data = showtime.httpPost("http://api.themoviedb.org/3/account/" + this.id + "/favorite", showtime.JSONEncode(body), {
+                var data = showtime.httpPost("https://api.themoviedb.org/3/account/" + this.id + "/favorite", showtime.JSONEncode(body), {
                     'api_key': this.key,
                     'session_id': this.session
                 }, {
@@ -523,7 +689,7 @@
             };
 
             try {
-                var data = showtime.httpPost("http://api.themoviedb.org/3/account/" + this.id + "/movie_watchlist", showtime.JSONEncode(body), {
+                var data = showtime.httpPost("https://api.themoviedb.org/3/account/" + this.id + "/movie_watchlist", showtime.JSONEncode(body), {
                     'api_key': this.key,
                     'session_id': this.session
                 }, {
@@ -541,7 +707,7 @@
 
         this.request_token = function () {
             try {
-                var request = showtime.httpGet("http://api.themoviedb.org/3/authentication/token/new", {
+                var request = showtime.httpGet("https://api.themoviedb.org/3/authentication/token/new", {
                     "api_key": this.key
                 });
                 var data = showtime.JSONDecode(request.toString());
@@ -561,7 +727,7 @@
 
         this.session_id = function () {
             try {
-                var request = showtime.httpGet("http://api.themoviedb.org/3/authentication/session/new", {
+                var request = showtime.httpGet("https://api.themoviedb.org/3/authentication/session/new", {
                     "api_key": this.key,
                     "request_token": this.request_token
                 });
@@ -571,21 +737,32 @@
                     this.session = data.session_id;
 
                     store_auth.session = this.session;
+
+                    var info = this.getData("account");
+                    if (!info) {
+                        this.session = "";
+                        throw new Exception("Couldn't parse user's ID.");
+                    }
+
+                    for (var i in info) {
+                        this[i] = info[i];
+                        store_auth[i] = info[i];
+                    }
                     
-                    var match = this.expires.match("(.+?)-(.+?)-(.+?) (.+?):(.+?):(.+?) (.+?)00");
+                    /*var match = this.expires.match("(.+?)-(.+?)-(.+?) (.+?):(.+?):(.+?) (.+?)00");
                     var year = parseInt(match[1]);
                     var month = parseInt(match[2]);
                     var day = parseInt(match[3]);
                     var hours = parseInt(match[4]) - parseInt(match[7]);
                     var minutes = parseInt(match[5]);
                     var seconds = parseInt(match[6]);
-                    store_auth.expires = new Date(year, month, day, hours, minutes, seconds).getTime().toString();
+                    store_auth.expires = new Date(year, month, day, hours, minutes, seconds).getTime().toString();*/
 
                     return data;
                 }
             }
             catch (ex) {
-                
+                e(ex);
             }
             return null;
         }
@@ -598,6 +775,7 @@
 			"720P",
 			"AC3",
 			"AE",
+            "AKA",
 			"AHDTV",
 			"ANALOG",
 			"AUDIO",
@@ -625,11 +803,13 @@
 			"DTS",
 			"DTV",
 			"DUAL",
+            "DVD",
 			"DUBBED",
 			"DVBRIP",
 			"DVDRIP",
 			"DVDSCR",
 			"DVDSCREENER",
+            "ENGSUB",
 			"EXTENDED",
 			"FINAL",
 			"FS",
@@ -706,10 +886,14 @@
         ];
 
         this.searchMovie = function (title) {
-            var reg1 = new RegExp(/\[(.*?)\]/g);
-            var t = title.replace(reg1, '');
-            var end = t.indexOf('(');
-            if (end != -1) t = t.slice(0, end);
+            var match = title.match(/\(([0-9][0-9][0-9][0-9])\)/);
+            var year = null;
+            if (match) {
+                year = match[1];
+            }
+            var t = title.replace(/\[(.*?)\]/g, '').replace(/\(.+?\)/g, "").replace(/:/g, " ");
+            /*var end = t.indexOf('(');
+            if (end != -1) t = t.slice(0, end);*/
 
             t = t.toUpperCase();
             for (var i in stopstrings) {
@@ -719,46 +903,159 @@
                 }
             }
 
-            var args = {
-                'api_key': this.key,
-                'query': encodeURIComponent(showtime.entityDecode(t)),
-                'include_adult': 'true'
+            t = t.replace(/[ ]+/g, " ");
+            t = t.replace(/^\s+|\s+$/g,'');
+            showtime.trace("Search for: " + t, "NAVIX/TMDB");
 
-            };
-            var data = showtime.httpGet("http://api.themoviedb.org/3/search/movie", args);
-            data = showtime.JSONDecode(data.toString());
+            try {
+                var args = {
+                    'api_key': this.key,
+                    'query': encodeURIComponent(showtime.entityDecode(t)),
+                    'include_adult': 'true'
+                };
+                if (year != null)
+                    args["year"] = year;
+                var url = URL.appendArgs("https://api.themoviedb.org/3/search/movie", args);
+                var data = showtime.httpGet(url);
+                data = showtime.JSONDecode(data.toString());
 
-            if (parseInt(data['total_results']) > 0) {
-                showtime.trace('TMDB: Found ' + data['total_results'] + ' movie entries.');
-                return data.results[0].id;
+                if (parseInt(data['total_results']) > 0) {
+                   showtime.trace('TMDB: Found ' + data['total_results'] + ' movie entries.');
+                    return data.results[0].id;
+                }
+                else {
+                    showtime.trace('TMDB: No movie entries found.');
+                    return null;
+                }
             }
-            else {
-                showtime.trace('TMDB: No movie entries found.');
-                return null;
+            catch (ex) {
+                e(ex);
+                if (ex == 'Error: HTTP error: 404') {
+                    return "Movie was not found. Possibly it doesn't exist in TMDb.";
+                    return null;
+                }
             }
+            return null;
         }
 
-        this.getData = function (section, id, subsection, page) {
+        this.getData = function (section, id, subsection, page, extra_args) {
             try {
                 var feature = section;
                 if (id) feature += "/" + id;
                 if (id && subsection) feature += "/";
                 if (!id && subsection) feature += "/";
                 if (subsection) feature += subsection;
-                var data = showtime.JSONDecode(showtime.httpGet("http://api.themoviedb.org/3/" + feature, {
+                var args = {
                     'api_key': this.key,
-                    'session_id': api.session,
                     'page': (page) ? page : 1
-                }).toString());
+                };
+                if (api.session)
+                    args["session_id"] = api.session;
+                for (var arg in extra_args) {
+                    args[arg] = extra_args[arg];
+                }
 
-                return data;
+                /*var url = "https://api.themoviedb.org/3/" + feature + "?";
+                for (var i in args) {
+                    url += i + "=" + encodeURIComponent(args[i]) + "&";
+                }
+                url = url.slice(0, url.length - 1);*/
+                var url = URL.appendArgs("https://private-b131-themoviedb.apiary.io/3/" + feature, args);
+                p("Loading " + url);
+                try {
+                    var data = showtime.JSONDecode(showtime.httpGet(url).toString());
+                    /*var data = showtime.JSONDecode(showtime.httpReq(url, {
+                        method: "GET",
+                        caching: true, 
+                        compression: true
+                    }).toString());*/
+
+                    return data;
+                }
+                catch (ex) {
+                    e(ex);
+                    if (ex == "Error: HTTP error: 503")
+                        t("There is a big number of simultaneous connections");
+                    return null;
+                }
             }
             catch (ex) {
                 showtime.trace(ex, "TMDB");
+                e(ex);
                 return null;
             }
         }
+
+        this.createList = function(name) {
+            if (!api.authenticated()) {
+                return "User must be authenticated";
+            }
+
+            var args = {
+                'api_key': this.key,
+                'session_id': this.session
+            };
+            var json = {
+                "name": name,
+                "description": ""
+            };
+            var url = URL.appendArgs("https://api.themoviedb.org/3/list", args);
+            try {
+                var data = showtime.JSONDecode(showtime.httpPost(url, showtime.JSONEncode(json), null, {
+                    "Content-Type": "application/json"
+                }).toString());
+                return data;
+            }
+            catch (ex) {
+                e(ex);
+                if (ex == "Error: HTTP error: 503")
+                    return "Right now it is not possible to process this request. Try later again.";
+                return "There was one error while trying to add item to list";
+            }
+        }
+
+        this.addListItem = function(list_id, media_id) {
+            if (!api.authenticated()) {
+                return "User must be authenticated";
+            }
+
+            var args = {
+                'api_key': this.key,
+                'session_id': this.session
+            };
+            var json = {
+                "media_id": media_id
+            };
+            var url = URL.appendArgs("https://api.themoviedb.org/3/list/" + list_id + "/add_item", args);
+            try {
+                p(url);
+                p(showtime.JSONEncode(json));
+                var data = showtime.httpPost(url, showtime.JSONEncode(json), null, {
+                    "Content-Type": "application/json"
+                });
+                return null;
+            }
+            catch (ex) {
+                e(ex);
+                if (ex == "Error: HTTP error: 403")
+                    return "Or you can't add items to this list or the list contains already this item";
+                else if (ex == "Error: HTTP error: 503")
+                    return "Right now it is not possible to process this request. Try later again.";
+                return "There was one error while trying to add item to list";
+            }
+        }
     }
+
+    var URL = {
+        "appendArgs": function(url, args) {
+            url += "?";
+            for (var i in args) {
+                url += i + "=" + encodeURIComponent(args[i]) + "&";
+            }
+            url = url.slice(0, url.length - 1);
+            return url;
+        }
+    };
 
     function KidsInMind() {
         this.searchMovie = function (name) {
@@ -817,144 +1114,170 @@
             return guide;
         }
     }
-    
-    plugin.addURI(PREFIX + ":movie:(.*):(.*)", function (page, query, mode) {
-        page.type = "directory";
-        page.metadata.glwview = plugin.path + "views/loading.view";
-        page.metadata.backgroundAlpha = 0.5;
-        page.loading = false;
-        page.metadata.lists = [];
 
-        page.metadata.progress = 0;
+    function movieView(page, options) {
+        page.metadata.background = plugin.path + "views/img/background.png";
 
-        query = unescape(query);
-        var id = null;
-        if (mode == "0") {
-            id = api.searchMovie(query);
+        var id = options.id;
+        var images = api.getData("movie", id, "images");
 
-            if (!id) {
-                page.error("No movies found for the title given.");
-                return;
+        page.metadata.logo = plugin.path + "views/img/nophoto.png";
+        if (images && images.posters) {
+            var posters = [];
+            for (var i = 0; i < images.posters.length; i++) {
+                var poster = [images.posters[i].file_path, i + 1, (i == 0 ? true : false)];
+                posters.push(poster);
             }
+            page.options.createMultiOpt("poster" + id, "Poster", posters, function(posterId) {
+                t("Using poster: " + posterId);
+                page.metadata.logo = "tmdb:image:profile:" + posterId
+            });
         }
-        else if (parseInt(mode) < 3) id = query;
-        else {
-            page.error("Unknown mode");
-            return;
-        }
-
-        page.metadata.rating = 2;
-        plugin.subscribe("page.model.metadata.rating", function (v) {
-            showtime.print(v);
-        });
-        for (var i = 0; i < 5; i++) {
-            page.onEvent("rating" + i, function (v) {
-                showtime.print(v);
+        if (images && images.backdrops) {
+            var backgrounds = [];
+            for (var i = 0; i < images.backdrops.length; i++) {
+                var back = [images.backdrops[i].file_path, i + 1, (i == 0 ? true : false)];
+                backgrounds.push(back);
+            }
+            page.options.createMultiOpt("background" + id, "Background", backgrounds, function(backId) {
+                t("Using background: " + backId);
+                page.metadata.background = "tmdb:image:backdrop:" + backId
             });
         }
 
-        var item = api.getData("movie", id);
+        var args = { append_to_response: '' };
 
-        page.metadata.progress = 20;
+        if (api.authenticated()) {
+            args.append_to_response += "account_states,";
+        }
 
-        if (!item) {
-            page.error("TMDB couldn't parse information for this movie.");
+        if (service.cast || service.crew)
+            args.append_to_response += "casts,";
+        args.append_to_response += "releases,";
+        if (service.trailers)
+            args.append_to_response += "trailers,";
+        if (service.similar_movies)
+            args.append_to_response += "similar_movies,";
+        if (service.lists)
+            args.append_to_response += "lists,";
+
+        var data = api.getData("movie", id, null, null);
+
+        if (!data) {
+            page.error("Movie not found. Possibly it doesn't exist in TMDb's Database");
             return;
         }
 
-        var tmdb_id = item.id;
+        if (data.status_message) {
+            page.error(data.status_message);
+            return;
+        }
 
-        page.metadata.title = item.title;
+        if (api.authenticated()) {
+            page.metadata.canFavorite = true;
+            page.metadata.canWatchlist = true;
+            var state = api.getData("movie", id, "account_states");
+            page.metadata.favorite = state.favorite;
+            page.metadata.watchlist = state.watchlist;
+        }
 
-        page.metadata.logo = "tmdb:image:poster:" + item.poster_path;
-        if (item.backdrop_path)
-            page.metadata.background = "tmdb:image:backdrop:" + item.backdrop_path;
+        //var item = api.getData("movie", id);
+
+        page.metadata.progress = 20;
+
+        var tmdb_id = data.id;
+
+        page.metadata.title = data.title;
+
+        /*page.metadata.logo = "tmdb:image:poster:" + data.poster_path;
+        if (data.backdrop_path)
+            page.metadata.background = "tmdb:image:backdrop:" + data.backdrop_path;*/
 
         // General Movie Informations
         var genres = "";
-        for (var i in item.genres) {
-            var entry = item.genres[i];
+        for (var i in data.genres) {
+            var entry = data.genres[i];
             genres += entry.name;
-            if (i < item.genres.length - 1)
+            if (i < data.genres.length - 1)
                 genres += ', ';
         }
 
         var titles = [];
-        var title = item.title;
+        var title = data.title;
 
-        if (item.original_title != title) {
-            page.metadata.original_title = item.original_title;
+        if (data.original_title != title) {
+            page.metadata.original_title = data.original_title;
         }
 
         var item1 = {};
 
         if (service.cast || service.crew) {
-        // Cast and Crew Informations
-        item1 = api.getData("movie", tmdb_id, "casts");
-        if (item1) {
-            var cast = [];
-            var crew = [];
-            var director = "";
-            var writers = "";
+            // Cast and Crew Informations
+            var item1 = api.getData("movie", tmdb_id, "casts");
+            if (item1) {
+                var cast = [];
+                var crew = [];
+                var director = "";
+                var writers = "";
 
-            if (service.crew) {
-            for (var i in item1.crew) {
-                var person = item1.crew[i];
+                if (service.crew) {
+                    for (var i in item1.crew) {
+                        var person = item1.crew[i];
 
-                if (person.department == "Directing" && director == "")
-                    director = person.name;
+                        if (person.department == "Directing" && director == "")
+                            director = person.name;
 
-                if (person.department == "Writing" && writers.indexOf(person.name) == -1)
-                    writers += person.name + ", ";
+                        if (person.department == "Writing" && writers.indexOf(person.name) == -1)
+                            writers += person.name + ", ";
 
-                var image = "tmdb:image:profile:" + person.profile_path;
-                if (!person.profile_path || person.profile_path == "null") image = plugin.path + "views/img/nophoto.png";
-                crew.push({
-                    //title: person.name + "\n" + person.job,
-                    title: person.name,
-                    subtitle: person.job,
-                    image: image,
-                    url: PREFIX + ":person:" + person.id,
-                    parent: "Crew List"
-                });
-            }
+                        var image = "tmdb:image:profile:" + person.profile_path;
+                        if (!person.profile_path || person.profile_path == "null") image = plugin.path + "views/img/nophoto.png";
+                        crew.push({
+                            //title: person.name + "\n" + person.job,
+                            title: person.name,
+                            subtitle: person.job,
+                            image: image,
+                            url: PREFIX + ":person:" + person.id,
+                            parent: "Crew List"
+                        });
+                    }
+                }
+
+                page.metadata.progress = 40;
+
+                if (writers != "")
+                    writers = writers.slice(0, writers.length - 2);
+
+                if (service.cast) {
+                    item1.cast = util.insertionSort(item1.cast, "order");
+                    for (var i in item1.cast) {
+                        var character = item1.cast[i];
+                        var image = "tmdb:image:profile:" + character.profile_path;
+                        if (!character.profile_path || character.profile_path == "null") image = plugin.path + "views/img/nophoto.png";
+                        cast.push({
+                            //title: character.name + "\n" + character.character,
+                            title: character.name,
+                            subtitle: character.character,
+                            actor: character.name,
+                            character: character.character,
+                            image: image,
+                            url: PREFIX + ":person:" + character.id,
+                            parent: "Cast List"
+                        });
+                    }
+
+                    if (cast.length > 0)
+                        page.appendPassiveItem("list", cast, { title: "Actors" });
+                }
+
+                if (service.crew && crew.length > 0)
+                    page.appendPassiveItem("list", crew, { title: "Crew" });
+            } 
         }
-
-        page.metadata.progress = 40;
-
-            if (writers != "")
-                writers = writers.slice(0, writers.length - 2);
-
-            if (service.cast) {
-            item1.cast = util.insertionSort(item1.cast, "order");
-            for (var i in item1.cast) {
-                var character = item1.cast[i];
-                var image = "tmdb:image:profile:" + character.profile_path;
-                if (!character.profile_path || character.profile_path == "null") image = plugin.path + "views/img/nophoto.png";
-                cast.push({
-                    //title: character.name + "\n" + character.character,
-                    title: character.name,
-                    subtitle: character.character,
-                    actor: character.name,
-                    character: character.character,
-                    image: image,
-                    url: PREFIX + ":person:" + character.id,
-                    parent: "Cast List"
-                });
-            }
-
-            if (cast.length > 0)
-                page.appendPassiveItem("list", cast, { title: "Actors" });
-        }
-
-            if (service.crew && crew.length > 0)
-                page.appendPassiveItem("list", crew, { title: "Crew" });
-        } 
-    }
 
         page.metadata.progress = 60;
 
-        page.metadata.description = item.overview;
+        page.metadata.description = data.overview;
 
         if (director)
             page.appendPassiveItem("label", new showtime.RichText(director), { title: "Director: " });
@@ -962,21 +1285,21 @@
             page.appendPassiveItem("label", new showtime.RichText(writers), { title: "Writers: " });
         if (genres)
             page.appendPassiveItem("label", new showtime.RichText(genres), { title: "Genres: " });
-        if (item.budget)
-            page.appendPassiveItem("label", new showtime.RichText("$" + item.budget.toString().replace(/(\d)(?=(\d\d\d)+(?!\d))/g, "$1,")), { title: "Budget: " });
+        if (data.budget)
+            page.appendPassiveItem("label", new showtime.RichText("$" + data.budget.toString().replace(/(\d)(?=(\d\d\d)+(?!\d))/g, "$1,")), { title: "Budget: " });
 
-        if (item.release_date) {
-            var year = item.release_date.slice(0, item.release_date.indexOf("-"));
+        if (data.release_date) {
+            var year = data.release_date.slice(0, data.release_date.indexOf("-"));
             page.metadata.title += " (" + year + ")";
         }
 
-        var rating = parseFloat(item.vote_average) / 10;
+        var rating = parseFloat(data.vote_average) / 10;
         if (rating)
             page.appendPassiveItem("rating", rating, { title: "Rating: " });
-        if (item.runtime)
-            page.appendPassiveItem("label", new showtime.RichText(item.runtime + " min"), { title: "Runtime: " });
+        if (data.runtime)
+            page.appendPassiveItem("label", new showtime.RichText(data.runtime + " min"), { title: "Runtime: " });
 
-        var item2 = api.getData("movie", tmdb_id, "releases");
+        var item2 = data.releases;
         if (item2) {
             for (var i in item2.countries) {
                 var it = item2.countries[i];
@@ -990,111 +1313,336 @@
             page.appendPassiveItem("bodytext", new showtime.RichText(page.metadata.description), { title: "Overview" });
 
         if (service.trailers) {
-        // Trailers
-        var item1 = api.getData("movie", tmdb_id, "trailers");
-        var trailers = [];
-        if (item1) {
-            showtime.trace("TMDB: Parsing Trailers");
-            for (var i in item1.youtube) {
-                var trailer = item1.youtube[i];
-                var image = "http://i.ytimg.com/vi/" + trailer.source + "/hqdefault.jpg";
-                trailers.push({
-                    image: image,
-                    title: trailer.name + " (" + trailer.size + ")",
-                    url: "youtube_test:video:simple:" + escape(page.metadata.title + " - " + trailer.name) + ":" + trailer.source
-                });
-            }
+            // Trailers
+            var item1 = api.getData("movie", id, "trailers");
+            var trailers = [];
+            if (item1 && item1.total_results) {
+                showtime.trace("TMDB: Parsing Trailers");
+                for (var i in item1.youtube) {
+                    var trailer = item1.youtube[i];
+                    var image = "http://i.ytimg.com/vi/" + trailer.source + "/hqdefault.jpg";
+                    trailers.push({
+                        image: image,
+                        title: trailer.name + " (" + trailer.size + ")",
+                        url: "youtube:video:simple:" + escape(page.metadata.title + " - " + trailer.name) + ":" + trailer.source
+                    });
+                }
 
-            page.appendPassiveItem("list", trailers, { title: "Trailers" });
+                page.appendPassiveItem("list", trailers, { title: "Trailers" });
+            }
         }
-    }
 
         page.metadata.progress = 70;
 
         if (service.collection) {
-        // Collection
-        if (item.belongs_to_collection && item.belongs_to_collection != "null") {
-            var item1 = api.getData("collection", item.belongs_to_collection.id);
-            var collection = [];
-            if (item1) {
-                showtime.trace("TMDB: Parsing Collection");
-                for (var i in item1.parts) {
-                    var movie = item1.parts[i];
-                    var image = "tmdb:image:profile:" + movie.poster_path;
-                    if (!movie.poster_path || movie.poster_path == "null") image = plugin.path + "views/img/nophoto.png";
-                    collection.push({
-                        image: image,
-                        title: movie.title,
-                        url: PREFIX + ":movie:" + movie.id + ":1"
-                    });
+            // Collection
+            if (data.belongs_to_collection && data.belongs_to_collection != "null") {
+                var item1 = api.getData("collection", data.belongs_to_collection.id);
+                var collection = [];
+                if (item1) {
+                    showtime.trace("TMDB: Parsing Collection");
+                    for (var i in item1.parts) {
+                        var movie = item1.parts[i];
+                        var image = "tmdb:image:profile:" + movie.poster_path;
+                        if (!movie.poster_path || movie.poster_path == "null") image = plugin.path + "views/img/nophoto.png";
+                        collection.push({
+                            image: image,
+                            title: movie.title,
+                            url: PREFIX + ":movie:" + movie.id + ":1"
+                        });
+                    }
                 }
-            }
 
-            page.appendPassiveItem("list", collection, { title: "Collection" });
+                page.appendPassiveItem("list", collection, { title: "Collection" });
+            }
         }
-    }
 
         page.metadata.progress = 80;
 
         if (service.similar_movies) {
-        // Similar movies
-        var item1 = api.getData("movie", tmdb_id, "similar_movies");
-        if (item1) {
-            var similar_movies = [];
-            for (var i in item1.results) {
-                try {
-                    var movie = item1.results[i];
-                    var image = "tmdb:image:profile:" + movie.poster_path;
-                    if (!movie.poster_path || movie.poster_path == "null") image = plugin.path + "views/img/nophoto.png";
-                    similar_movies.push({
+            // Similar movies
+            var item1 = api.getData("movie", id, "similar_movies");
+            if (item1 && item1.total_results) {
+                var similar_movies = [];
+                for (var i in item1.results) {
+                    try {
+                        var movie = item1.results[i];
+                        var image = "tmdb:image:profile:" + movie.poster_path;
+                        if (!movie.poster_path || movie.poster_path == "null") image = plugin.path + "views/img/nophoto.png";
+                        similar_movies.push({
+                            image: image,
+                            title: movie.title,
+                            url: PREFIX + ":movie:" + movie.id + ":1",
+                            mode: "navopen"
+                        });
+                    }
+                    catch (ex) {
+                        showtime.trace("Skipped 1 similar movie due to: ");
+                        e(ex);
+                    }
+                }
+                page.appendPassiveItem("list", similar_movies, { title: "Similar Movies" });
+            }
+        }
+
+        if (service.lists) {
+            // Lists that contain the movie
+            var item1 = api.getData("movie", id, "lists");
+            if (item1 && item1.total_results) {
+                var lists = [];
+                for (var i in item1.results) {
+                    try {
+                        var list = item1.results[i];
+                        var image = "tmdb:image:profile:" + list.poster_path;
+                        if (!list.poster_path || list.poster_path == "null") image = plugin.path + "views/img/nophoto.png";
+                        lists.push({
+                            image: image,
+                            title: list.name,
+                            url: PREFIX + ":list:" + list.id,
+                            mode: "navopen"
+                        });
+                    }
+                    catch (ex) {
+                        showtime.trace("Skipped 1 list due to: ");
+                        e(ex);
+                    }
+                }
+                page.appendPassiveItem("list", lists, { title: "Lists" });
+            }
+        }
+
+        /*if (api.authenticated()) {
+            var item = api.getData("account", api.id, "lists");
+            if (item && item.total_results) {
+                var lists = [];
+                for (var i in item.results) {
+                    var it = item.results[i];
+                    var image = "tmdb:image:profile:" + it.poster_path;
+                    if (!it.poster_path || it.poster_path == "null") image = plugin.path + "views/img/nophoto.png";
+                    var args = {
+                        operation: "add",
+                        list_id: it.id,
+                        media_id: tmdb_id,
+                        referrer: options.url
+                    };
+                    args = escape(showtime.JSONEncode(args));
+                    lists.push({
+                        title: it.name,
                         image: image,
-                        title: movie.title,
-                        url: PREFIX + ":movie:" + movie.id + ":1",
-                        mode: "navopen"
+                        url: PREFIX + ":user:list:" + args,
+                        mode: "pageevent",
+                        event: "list" + i
                     });
                 }
-                catch (ex) {
-                    showtime.trace("Skipped 1 similar movie due to: " + ex);
-                }
+
+                page.appendPassiveItem("list", lists, { title: "My Lists" });
             }
-            page.appendPassiveItem("list", similar_movies, { title: "Similar Movies" });
-        }
-    }
+        }*/
 
         page.metadata.progress = 90;
 
         if (service.extras) {
+            var q = title;
+            /*if (item.original_title != title)
+                q = item.original_title;*/
+            if (year)
+                q += " " + year;
 
-        var q = title;
-        if (year)
-            q += " " + year;
+            page.metadata.actions_title = "Extras";
 
-        page.appendAction("pageevent", "addToFavorites", true, { title: "Add to Favorites", image: plugin.path + "views/img/add_favorite.png" })
+            if (api.authenticated()) {
+                if (!page.metadata.favorite) {
+                    page.appendAction("pageevent", "addToFavorites", true, { title: "Add To", subtitle: "Favorites", image: plugin.path + "views/img/add_favorite.png" })
+                    page.onEvent("addToFavorites", function (v) {
+                        api.addFavorite(tmdb_id);
+                    });
+                }
 
-        page.onEvent("addToFavorites", function (v) {
-            api.addFavorite(tmdb_id);
-        });
+                if (!page.metadata.watchlist) {
+                    page.appendAction("pageevent", "addToWatchList", true, { title: "Add To", subtitle: "Watch List", image: plugin.path + "views/img/watchlist.png" })
+                    page.onEvent("addToWatchList", function (v) {
+                        api.addWatchList(tmdb_id);
+                    });
+                }
 
-        page.appendAction("navopen", "navi-x:playlist:playlist:" + escape(service.searchSource + encodeURIComponent(q)), true, { title: "Search for entries", image: plugin.path + "views/img/search.png" })
+                /*page.appendAction("pageevent", "addToList", true, { title: "Add to List", image: plugin.path + "views/img/add_list.png" })
+                page.onEvent("addToList", function (v) {
+                    page.redirect(PREFIX + ":lists:add:" + tmdb_id);
+                });*/
+            }
 
-        
-        if (item.imdb_id && item.imdb_id != "null")
-            page.appendAction("navopen", PREFIX + ":imdb:parentsguide:" + item.imdb_id, true, { title: "IMDB - Parents Guide", image: plugin.path + "views/img/rated-r.png" });
+            page.appendAction("navopen", "youtube:feed:" + escape("https://gdata.youtube.com/feeds/api/videos?q=" + q), true, { title: "View more", subtitle: "Youtube", image: plugin.path + "img/youtube.png" });
 
-        //page.appendAction("navopen", PREFIX + ":kim:parentsguide:" + encodeURIComponent(title), true, { title: "Kids in Mind - Parents Guide", image: plugin.path + "views/img/rated-r.png" })
+            if (service.searchSource1 && service.searchSource1 != "")
+                page.appendAction("navopen", "navi-x:playlist:playlist:" + escape(service.searchSource1 + encodeURIComponent(q)), true, { title: "Searcher #1", image: plugin.path + "views/img/search.png" });
+            if (service.searchSource2 && service.searchSource2 != "")
+                page.appendAction("navopen", "navi-x:playlist:playlist:" + escape(service.searchSource2 + encodeURIComponent(q)), true, { title: "Searcher #2", image: plugin.path + "views/img/search.png" });
+            if (service.searchSource3 && service.searchSource3 != "")
+                page.appendAction("navopen", "navi-x:playlist:playlist:" + escape(service.searchSource3 + encodeURIComponent(q)), true, { title: "Searcher #3", image: plugin.path + "views/img/search.png" });
+            
+            if (data.imdb_id && data.imdb_id != "null")
+                page.appendAction("navopen", PREFIX + ":imdb:parentsguide:" + data.imdb_id, true, { title: "IMDB", subtitle: "Parents Guide", image: plugin.path + "views/img/rated-r.png" });
 
-        /*page.appendAction("pageevent", "addToWatchList", true, { title: "Add to Watch List", icon: plugin.path + "views/img/watch_later.png" });
-        page.onEvent('addToWatchlist', function () {
-            api.addWatchList(tmdb_id);
-        });*/
-
+            page.appendAction("navopen", PREFIX + ":kim:parentsguide:" + encodeURIComponent(title), true, { title: "Kids in Mind", subtitle: "Parents Guide", image: plugin.path + "views/img/rated-r.png" })
         }
 
         page.metadata.progress = 100;
         page.metadata.glwview = plugin.path + "views/tmdb.view";
+    }
+    
+    plugin.addURI(PREFIX + ":movie:(.*):(.*)", function (page, query, mode) {
+        page.type = "directory";
+        page.metadata.glwview = plugin.path + "views/loading.view";
+        page.metadata.backgroundAlpha = 0.5;
+        page.loading = false;
+        page.metadata.lists = [];
+
+        page.metadata.progress = 0;
+
+        query = unescape(query);
+        var id = null;
+        var args = {};
+        if (mode == "0") {
+            args.id = api.searchMovie(query);
+
+            if (!args.id) {
+                page.error("No movies found for the title given.");
+                return;
+            }
+        }
+        else if (parseInt(mode) < 3) args.id = query;
+        else {
+            page.error("Unknown mode");
+            return;
+        }
+
+        args.url = PREFIX + ":movie:" + escape(query) + ":" + mode;
+        movieView(page, args);
 
         page.loading = false;
     });
+
+    plugin.addURI(PREFIX + ":movie:play:(.*)", function (page, options) {
+        page.type = "directory";
+        page.metadata.glwview = plugin.path + "views/loading.view";
+        page.metadata.backgroundAlpha = 0.5;
+        page.loading = false;
+        page.metadata.lists = [];
+
+        page.metadata.progress = 0;
+
+        options = showtime.JSONDecode(unescape(options));
+        var query = unescape(options.query);
+        var id = null;
+        var args = {};
+        var mode = options.mode;
+        if (mode == 0) {
+            args.id = api.searchMovie(query);
+
+            if (!args.id) {
+                page.error("No movies found for the title given.");
+                return;
+            }
+        }
+        else if (mode < 3) args.id = query;
+        else {
+            page.error("Unknown mode");
+            return;
+        }
+
+        if (options.sources) {
+            var sources = [];
+            showtime.trace("TMDB: Parsing Sources");
+            for (var i in options.sources) {
+                var source = options.sources[i];
+                sources.push({
+                    image: source.image ? source.image : plugin.path + "views/img/movie.png",
+                    title: source.title,
+                    url: source.url
+                });
+            }
+
+            page.appendPassiveItem("list", sources, { title: "Play Now" });
+        }
+
+        args.url = PREFIX + ":movie:play:" + showtime.JSONEncode(escape(options));
+        movieView(page, args);
+
+        page.loading = false;
+    });
+
+    plugin.addURI(PREFIX + ":list:(.*)", function (page, id) {
+        page.type = "directory";
+
+        page.loading = false;
+        page.metadata.glwview = plugin.path + "views/loading.view";
+        
+        var data = api.getData("list", id, null, null);
+        if (!data) {
+            page.loading = false;
+            page.error("There was an error while loading the information.");
+            return;
+        }
+        listPageController(page, function(offset) {
+            return data;
+        });
+
+        page.metadata.title = data.name;
+        page.metadata.glwview = plugin.path + "views/posters.view";
+
+        page.loading = false;
+    });
+
+    plugin.addURI(PREFIX + ":list:(.*):add:(.*)", function (page, list_id, media_id) {
+        page.type = "directory";
+
+        page.loading = false;
+        var res = api.addListItem(list_id, media_id);
+        if (res != null) {
+            showtime.notify(res, 3);
+        }
+        else {
+            showtime.notify("Movie added successfully to list", 3);
+        }
+        page.redirect(PREFIX + ":movie:" + media_id + ":1");
+
+        page.loading = false;
+    });
+
+    function listPageController(page, loader) {
+        var offset = 1;
+
+        function paginator() {
+            //while(true) {    
+                var data = loader(offset);
+
+                var items = data.items;
+                page.entries = items.length;
+                for each (var it in items) {
+                    var metadata = {
+                        title: it.original_title,
+                        icon: "tmdb:image:poster:" + it.poster_path
+                    }
+                    if (it.backdrop_path)
+                        metadata.background = "tmdb:image:backdrop:" + it.backdrop_path;
+                    page.appendItem(PREFIX + ":movie:" + it.id + ":2", "directory", metadata);
+                }
+
+                page.loading = false;
+                offset++;
+                page.contents = "movies";
+                page.metadata.glwview = plugin.path + "views/loading.view";
+
+                /*break;
+            }
+
+            return false;*/
+            //return offset < page.entries;
+        }
+    
+        paginator();    
+        page.paginator = paginator;
+    }
 
     plugin.addURI(PREFIX + ":genre:list", function (page) {
         page.type = "directory";
@@ -1128,7 +1676,7 @@
                 var movies = [];
                 for (var k in data.results) {
                     movies.push({
-                        title: data.results[k].name,
+                        title: data.results[k].title,
                         image: "tmdb:image:poster:" + data.results[k].poster_path,
                         url: PREFIX + ":movie:" + data.results[k].id + ":1"
                     });
@@ -1152,6 +1700,7 @@
         page.metadata.title = item.name;
 
         page.metadata.logo = "tmdb:image:poster:" + item.profile_path;
+        if (!item.profile_path || item.profile_path == "null") page.metadata.logo = plugin.path + "views/img/nophoto.png";
 
         if (item.birthday)
             page.appendPassiveItem("label", item.birthday + "\n" + item.place_of_birth, { title: "Birthday: " });
@@ -1299,61 +1848,111 @@
 
             pageMenu(page);
 
-            var item = api.getData("account");
+            page.metadata.title = api.username;
 
-            page.metadata.title = item.username;
-            var id = item.id;
+            var item = api.getData("account", api.id, "lists");
+            if (item && item.total_results) {
+                var lists = [];
+                for (var i in item.results) {
+                    var it = item.results[i];
+                    var image = "tmdb:image:profile:" + it.poster_path;
+                    if (!it.poster_path || it.poster_path == "null") image = plugin.path + "views/img/nophoto.png";
+                    lists.push({
+                        title: it.name,
+                        image: image,
+                        url: PREFIX + ":list:" + it.id
+                    });
+                }
 
-            item = api.getData("account", id, "favorite_movies");
-            var favorites = [];
-            for (var i in item.results) {
-                var it = item.results[i];
-                var image = "tmdb:image:profile:" + it.poster_path;
-                if (!it.poster_path || it.poster_path == "null") image = plugin.path + "views/img/nophoto.png";
-                favorites.push({
-                    title: it.title,
-                    image: image,
-                    url: PREFIX + ":movie:" + it.id + ":1"
-                });
+                page.appendPassiveItem("list", lists, { title: "Lists" });
             }
 
-            page.appendPassiveItem("list", favorites, { title: "Favorites" });
 
+            item = api.getData("account", api.id, "favorite_movies");
+            if (item && item.total_results) {
+                var favorites = [];
+                for (var i in item.results) {
+                    var it = item.results[i];
+                    var image = "tmdb:image:profile:" + it.poster_path;
+                    if (!it.poster_path || it.poster_path == "null") image = plugin.path + "views/img/nophoto.png";
+                    favorites.push({
+                        title: it.title,
+                        image: image,
+                        url: PREFIX + ":movie:" + it.id + ":1"
+                    });
+                }
 
-            item = api.getData("account", id, "movie_watchlist");
-            var watchList = [];
-            for (var i in item.results) {
-                var it = item.results[i];
-                var image = "tmdb:image:profile:" + it.poster_path;
-                if (!it.poster_path || it.poster_path == "null") image = plugin.path + "views/img/nophoto.png";
-                watchList.push({
-                    title: it.title,
-                    image: image,
-                    url: PREFIX + ":movie:" + it.id + ":1"
-                });
+                page.appendPassiveItem("list", favorites, { title: "Favorites" });
             }
 
-            page.appendPassiveItem("list", watchList, { title: "Watch List" });
 
+            item = api.getData("account", api.id, "movie_watchlist");
+            if (item && item.total_results) {
+                var watchList = [];
+                for (var i in item.results) {
+                    var it = item.results[i];
+                    var image = "tmdb:image:profile:" + it.poster_path;
+                    if (!it.poster_path || it.poster_path == "null") image = plugin.path + "views/img/nophoto.png";
+                    watchList.push({
+                        title: it.title,
+                        image: image,
+                        url: PREFIX + ":movie:" + it.id + ":1"
+                    });
+                }
 
-            item = api.getData("account", id, "rated_movies");
-            var ratedMovies = [];
-            for (var i in item.results) {
-                var it = item.results[i];
-                var image = "tmdb:image:profile:" + it.poster_path;
-                if (!it.poster_path || it.poster_path == "null") image = plugin.path + "views/img/nophoto.png";
-                ratedMovies.push({
-                    title: it.title,
-                    image: image,
-                    url: PREFIX + ":movie:" + it.id + ":1"
-                });
+                page.appendPassiveItem("list", watchList, { title: "Watch List" });
             }
 
-            page.appendPassiveItem("list", ratedMovies, { title: "Rated Movies" });
+
+            item = api.getData("account", api.id, "rated_movies");
+            if (item && item.total_results) {
+                var ratedMovies = [];
+                for (var i in item.results) {
+                    var it = item.results[i];
+                    var image = "tmdb:image:profile:" + it.poster_path;
+                    if (!it.poster_path || it.poster_path == "null") image = plugin.path + "views/img/nophoto.png";
+                    ratedMovies.push({
+                        title: it.title,
+                        image: image,
+                        url: PREFIX + ":movie:" + it.id + ":1"
+                    });
+                }
+
+                page.appendPassiveItem("list", ratedMovies, { title: "Rated Movies" });
+            }
 
             page.loading = false;
         }
     });
+
+    plugin.addURI(PREFIX + ":user:list:(.*)", function (page, options) {
+        options = showtime.JSONDecode(unescape(options));
+        if (options.operation == "add") {
+            var res = api.addListItem(options.list_id, options.media_id);
+            if (res != null) {
+                showtime.notify(res, 3);
+            }
+            else {
+                showtime.notify("Movie added successfully to list", 3);
+            }
+            page.redirect(options.referrer);
+        }
+
+        page.error("Invalid operation");
+    });
+
+    function e(ex) {
+        t(ex);
+        t("Line #" + ex.lineNumber);
+    }
+ 
+    function t(message) {
+        showtime.trace(message, plugin.getDescriptor().id);
+    }
+ 
+    function p(message) {
+        showtime.print(message);
+    }
 
     plugin.addURI(PREFIX + ":start", startPage);
     plugin.addURI(PREFIX + ":standard:lists", startPage);

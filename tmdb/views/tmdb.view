@@ -5,6 +5,20 @@ widget(container_y, {
 	padding: $ui.size;
 
 	widget(container_x, {
+		widget(image, {
+			source: "img/heart.png";
+			hidden: !($page.model.metadata.canFavorite);
+			width: $ui.height * 0.065;
+			color: iir($page.model.metadata.favorite, 4) + 0.3;
+		});
+
+		widget(image, {
+			source: "img/watchlist.png";
+			hidden: !($page.model.metadata.canWatchlist);
+			width: $ui.height * 0.065;
+			color: iir($page.model.metadata.watchlist, 4) + 0.3;
+		});
+
 		widget(label, {
 			caption: $page.model.metadata.title;
 			TextStyleItem();
