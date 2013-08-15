@@ -67,6 +67,22 @@
     var shortener = new GoogleUrlShortener();
     var kim = new KidsInMind();
 
+    if (showtime.currentVersionInt >= 4 * 10000000 + 3 * 100000 + 261) {
+        plugin.addItemHook({
+            title: "TMDb",
+            itemtype: "video",
+            handler: function(obj, nav) {
+                var title = obj.metadata.title;
+                title = title.replace(/<.+?>/g, "").replace(/[ ]+/g, " ");
+                t("TMDb: " + title);
+                if (!obj.metadata.imdbid)
+                    nav.openURL(PREFIX + ":movie:" + escape(title) + ":0");
+                else
+                    nav.openURL(PREFIX + ":movie:" + obj.metadata.imdbid + ":2");
+            }
+        });
+    }
+
     function pageMenu(page) {
         page.metadata.background = plugin.path + "views/img/background.png";
         
@@ -446,7 +462,10 @@
                     image: plugin.path + "views/img/add.png",
                     url: PREFIX + ":lists:upcoming"
                 });
-                page.appendPassiveItem("list", upcoming, { title: "Upcoming" });
+                page.appendPassiveItem("list", upcoming, { 
+                    title: "Upcoming",
+                    url: PREFIX + ":lists:upcoming"
+                });
             }
         }
 
@@ -1145,6 +1164,10 @@
             });
         }
 
+        page.options.createAction("viewImages", "View images", function() {
+            page.redirect(PREFIX + ":movie:images:" + id);
+        });
+
         var args = { append_to_response: '' };
 
         if (api.authenticated()) {
@@ -1518,6 +1541,44 @@
 
         args.url = PREFIX + ":movie:" + escape(query) + ":" + mode;
         movieView(page, args);
+
+        page.loading = false;
+    });
+
+    plugin.addURI(PREFIX + ":movie:images:(.*)", function (page, tmdbid) {
+        page.type = "directory";
+        page.contents = "items";
+        page.loading = false;
+
+        var configuration = api.getData("configuration");
+        var base_url = configuration.images.secure_base_url;
+        var size = "original";
+
+        var images = api.getData("movie", tmdbid, "images");
+
+        if (images && images.backdrops) {
+            var backgrounds = [];
+            for (var i = 0; i < images.backdrops.length; i++) {
+                //var url = "tmdb:image:backdrop:" + images.backdrops[i].file_path;
+                var url = base_url + size + images.backdrops[i].file_path;
+                page.appendItem(url, "image", {
+                    title: "Background #" + (i + 1),
+                    icon: url
+                });
+            }
+        }
+
+        if (images && images.posters) {
+            var posters = [];
+            for (var i = 0; i < images.posters.length; i++) {
+                //var url = "tmdb:image:backdrop:" + images.posters[i].file_path;
+                var url = base_url + size + images.posters[i].file_path;
+                page.appendItem(url, "image", {
+                    title: "Poster #" + (i + 1),
+                    icon: url
+                });
+            }
+        }
 
         page.loading = false;
     });

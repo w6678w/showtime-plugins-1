@@ -57,31 +57,34 @@ widget(container_y, {
 			});
 		});
 	
-		widget(container_y, {
-			// Lists
-			spacing: $ui.size * 0.5;
+		widget(container_x, {
+			widget(container_y, {
+				// Lists
+				spacing: $ui.size * 0.5;
 
-			widget(array, {
-				.childTilesX = 1;
-				.childTilesY = 2;
+				widget(array, {
+					.childTilesX = 1;
+					.childTilesY = 2;
+					.id = "array";
 
-				cloner($page.model.nodes, loader, {
-					.hidden = ($self.type != "list");
-					source: "itemviews/" + $self.type + ".view";
+					cloner($page.model.nodes, loader, {
+						.hidden = ($self.type != "list");
+						source: "itemviews/" + $self.type + ".view";
+					});
+
+					widget(loader, {
+						.source = "itemviews/action.view";
+					});
 				});
-
-				widget(loader, {
-					.source = "itemviews/action.view";
+			
+				widget(dummy, { height: $ui.size; });
+				
+				widget(label, {
+					.caption = "Currently selected: " + $clone.focused;
 				});
+				
+				.width = $ui.width - $ui.width / 4 - $ui.width * 2/5;
 			});
-			
-			widget(dummy, { height: $ui.size; });
-			
-			widget(label, {
-				.caption = "Currently selected: " + $clone.focused;
-			});
-			
-			.width = $ui.width - $ui.width / 4 - $ui.width * 2/5;
 		});
 	});
 	});
