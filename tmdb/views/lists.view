@@ -6,26 +6,27 @@ widget(container_y, {
 		.source = "header.view";
 	});
 
-	widget(container_y, {
-		padding: $ui.size;
-		spacing: $ui.size * 0.5;
+		widget(container_y, {
+			padding: [$ui.size, $ui.size / 2];
 
-		widget(label, {
-			caption: $clone.focused.title;
-		});
-
-		widget(array, {
-			// Lists
-			.childTilesX = 1;
-			.childTilesY = 2;
-			.Xspacing = $view.sizer;
-
-			cloner($page.model.nodes, loader, {
-				.hidden = (!count($self.data));
-				source: "itemviews/" + $self.type + ".view";
+			widget(label, {
+				caption: $clone.focused.title;
 			});
+		
+			widget(array, {
+				// Lists
+				.childTilesX = 1;
+				.childTilesY = 2;
+				.Xspacing = $view.sizer;
+				.Yspacing = $ui.size;
+				.id = "array";
 
-			.width = $ui.width - $ui.width / 4 - $ui.width / 3;
+				cloner($page.model.nodes, loader, {
+					.hidden = (!count($self.data));
+					source: "itemviews/" + $self.type + ".view";
+				});
+
+				.width = $ui.width - $ui.width / 4 - $ui.width / 3;
+			});
 		});
-	});
 });
