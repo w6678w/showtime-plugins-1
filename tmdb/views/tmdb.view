@@ -2,90 +2,115 @@
 
 widget(container_y, {
 	widget(container_y, {
-	padding: $ui.size;
+		padding: $ui.size;
 
-	widget(container_x, {
-		widget(image, {
-			source: "img/heart.png";
-			hidden: !($page.model.metadata.canFavorite);
-			width: $ui.height * 0.065;
-			color: iir($page.model.metadata.favorite, 4) + 0.3;
-		});
-
-		widget(image, {
-			source: "img/watchlist.png";
-			hidden: !($page.model.metadata.canWatchlist);
-			width: $ui.height * 0.065;
-			color: iir($page.model.metadata.watchlist, 4) + 0.3;
-		});
-
-		widget(label, {
-			caption: $page.model.metadata.title;
-			TextStyleItem();
-			.sizeScale = 3;
-		});
-	});
-
-	widget(container_x, {
-		widget(container_y, {
-			padding: $ui.size * 2;
-			// Image cover
+		widget(container_x, {
 			widget(image, {
-				source: $page.model.metadata.logo;
-				width: $ui.height * 0.6;
+				source: "img/heart.png";
+				hidden: !($page.model.metadata.canFavorite);
+				width: $ui.height * 0.065;
+				color: iir($page.model.metadata.favorite, 4) + 0.3;
 			});
-		});
-	
-		widget(container_y, {
-			// Details
-			.hidden = !(count($page.model.nodes));
-			padding: $ui.size;
-			.width = $ui.width * 0.35;
+
+			widget(image, {
+				source: "img/watchlist.png";
+				hidden: !($page.model.metadata.canWatchlist);
+				width: $ui.height * 0.065;
+				color: iir($page.model.metadata.watchlist, 4) + 0.3;;
+			});
 
 			widget(label, {
+				caption: $page.model.metadata.title;
 				TextStyleItem();
-				.caption = "Details";
-				//.size = 31;
-				.sizeScale = 2.3;
-			});
-			
-			spacing: $ui.size * 0.5;
-
-			cloner($page.model.nodes, loader, {
-				.hidden = ($self.type == "list");
-				source: "itemviews/" + $self.type + ".view";
+				.sizeScale = 3;
 			});
 		});
-	
+
 		widget(container_x, {
 			widget(container_y, {
-				// Lists
+				padding: $ui.size * 2;
+				// Image cover
+				widget(fader, {
+					filterConstraintY: true;
+					width: $ui.height * 0.6;
+					plane: [0,1,0,1];
+					alphaFallOff: 1;
+					blurFallOff: 0.2;
+					widget(mirror, {
+						alpha: 0.6;
+						widget(stencil, {
+							source: "skin://graphics/stencil.png";
+							widget(image, {
+								width: $ui.size * 12;
+								height: $ui.size * 8;
+								$clone.ready = isReady();
+								source: $page.model.metadata.logo;
+								color: 0.75;
+								saturation: 1 - iir(isReady(), 10);
+							});
+
+							widget(container_y, {
+								space(1);
+								widget(throbber, {
+									alpha: iir(!$clone.ready, 8);
+								});
+								space(1);
+							});
+						});
+					});
+				});
+			});
+	
+			widget(container_y, {
+				// Details
+				.hidden = !(count($page.model.nodes));
+				padding: $ui.size;
+				.width = $ui.width * 0.35;
+
+				widget(label, {
+					TextStyleItem();
+					.caption = "Details";
+					//.size = 31;
+					.sizeScale = 2.3;
+				});
+				
 				spacing: $ui.size * 0.5;
 
-				widget(array, {
-					.childTilesX = 1;
-					.childTilesY = 2;
-					.id = "array";
-
-					cloner($page.model.nodes, loader, {
-						.hidden = ($self.type != "list");
-						source: "itemviews/" + $self.type + ".view";
-					});
-
-					widget(loader, {
-						.source = "itemviews/action.view";
-					});
+				cloner($page.model.nodes, loader, {
+					.hidden = ($self.type == "list");
+					source: "itemviews/" + $self.type + ".view";
 				});
-			
-				widget(dummy, { height: $ui.size; });
+			});
+		
+			widget(container_x, {
+				widget(container_y, {
+					// Lists
+					spacing: $ui.size * 0.5;
+
+					widget(array, {
+						.childTilesX = 1;
+						.childTilesY = 2;
+						.id = "array";
+
+						cloner($page.model.nodes, loader, {
+							.hidden = ($self.type != "list");
+							source: "itemviews/" + $self.type + ".view";
+						});
+
+						widget(loader, {
+							.source = "itemviews/action.view";
+						});
+					});
 				
-				widget(label, {
-					.caption = "Currently selected: " + $clone.focused;
+					widget(dummy, { height: $ui.size; });
+					
+					widget(label, {
+						.caption = "Currently selected: " + $clone.focused;
+					});
+					
+					.width = $ui.width - $ui.width / 4 - $ui.width * 2/5;
 				});
-				
-				.width = $ui.width - $ui.width / 4 - $ui.width * 2/5;
 			});
 		});
-	});
 	});
 });

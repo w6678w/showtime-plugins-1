@@ -2,7 +2,7 @@
 	"author": "F\u00e1bio Ferreira (facanferff)", 
 	"title": "TMDb", 
 	"synopsis": "themoviedb.org is a free and community maintained movie database.", 
-	"version": "1.2", 
+	"version": "1.2.5", 
 	"file": "tmdb.js", 
 	"showtimeVersion": "4.1", 
 	"type": "javascript", 

@@ -1,6 +1,9 @@
 This is a plugin supporting TMDb for Showtime. The idea of the plugin is to allow users to browse and view movie information without exiting Showtime.
 
 ## TODO:
+- Add: History of seen movie views
+- Add: I'm feeling lucky that opens a random watch later movie view
+
 - Add: Allow user rate movies
 - Add: Create a new list
 - Add: Add movies to a list
@@ -11,6 +14,16 @@ This is a plugin supporting TMDb for Showtime. The idea of the plugin is to allo
 - Add: Browse movies of similar keyword
 
 ## Changelog:
+#1.2.5:
+- Add: View Collection images option in movie view
+- Add: "Search in Showtime" option in movie view (thanks Buksa)
+- Enhancement: Improve some design aspects
+- Enhancement: In "Director" field in movie view show all directors instead of just one
+
+#1.2.1:
+- Add: TMDb item menu option
+- Add: View images option in movie view
+
 #1.1:
 - Add: Support for specifying 3 search sources (in Movie View, only suppots PLX playlists at the moment)
 - Add: Browse movie in Youtube (in Movie View, requires Youtube plugin to be installed)

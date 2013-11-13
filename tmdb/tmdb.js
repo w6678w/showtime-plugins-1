@@ -75,16 +75,35 @@
                 var title = obj.metadata.title;
                 title = title.replace(/<.+?>/g, "").replace(/[ ]+/g, " ");
                 t("TMDb: " + title);
-                if (!obj.metadata.imdbid)
-                    nav.openURL(PREFIX + ":movie:" + escape(title) + ":0");
-                else
-                    nav.openURL(PREFIX + ":movie:" + obj.metadata.imdbid + ":2");
+                var args = {
+                    mode: 0,
+                    query: title
+                };
+
+                t(obj.metadata);
+
+                args.sources = [
+                    {
+                        title: title,
+                        //image: obj.metadata.icon ? obj.metadata.icon : "",
+                        url: obj.url
+                    }
+                ];
+
+                if (obj.metadata.year)
+                    args.year = obj.metadata.year;
+
+                if (obj.metadata.imdbid) {
+                    args.query = obj.metadata.imdbid;
+                    args.mode = 2;
+                }
+                nav.openURL(PREFIX + ":movie:play:" + escape(showtime.JSONEncode(args)));
             }
         });
     }
 
     function pageMenu(page) {
-        page.metadata.background = plugin.path + "views/img/background.png";
+        //page.metadata.background = plugin.path + "views/img/background.png";
         
         page.appendAction("navopen", PREFIX + ":standard:lists", true, { title: "Standard Lists", icon: plugin.path + "views/img/list.png", hidden: true });
         page.appendAction("navopen", PREFIX + ":genre:list", true, { title: "Genres", icon: plugin.path + "views/img/list.bmp", hidden: true });
@@ -428,7 +447,6 @@
 
     function startPage(page) {
         page.type = "directory";
-        page.metadata.background = plugin.path + "views/img/";
         page.metadata.glwview = plugin.path + "views/loading.view";
         page.loading = false;
 
@@ -904,9 +922,8 @@
 			"XVID"
         ];
 
-        this.searchMovie = function (title) {
+        this.searchMovie = function (title, year) {
             var match = title.match(/\(([0-9][0-9][0-9][0-9])\)/);
-            var year = null;
             if (match) {
                 year = match[1];
             }
@@ -917,14 +934,17 @@
             t = t.toUpperCase();
             for (var i in stopstrings) {
                 var index = t.indexOf(stopstrings[i]);
-                if (index != -1) {
+                if (index != -1 && 
+                    (index == 0 || (t[index - 1] == '.' || t[index - 1] == ' '))) {
                     t = t.slice(0, index);
+                    p(t);
+                    p(stopstrings[i]);
                 }
             }
 
             t = t.replace(/[ ]+/g, " ");
             t = t.replace(/^\s+|\s+$/g,'');
-            showtime.trace("Search for: " + t, "NAVIX/TMDB");
+            showtime.trace("Search for: " + t);
 
             try {
                 var args = {
@@ -971,6 +991,7 @@
                 if (api.session)
                     args["session_id"] = api.session;
                 for (var arg in extra_args) {
+                    t("Adding arg: " + arg + " - " + extra_args[arg]);
                     args[arg] = extra_args[arg];
                 }
 
@@ -982,7 +1003,9 @@
                 var url = URL.appendArgs("https://private-b131-themoviedb.apiary.io/3/" + feature, args);
                 p("Loading " + url);
                 try {
-                    var data = showtime.JSONDecode(showtime.httpGet(url).toString());
+                    var data = showtime.JSONDecode(showtime.httpGet(url, {}, {
+                        'Accept': 'application/json'
+                    }).toString());
                     /*var data = showtime.JSONDecode(showtime.httpReq(url, {
                         method: "GET",
                         caching: true, 
@@ -1135,6 +1158,23 @@
     }
 
     function movieView(page, options) {
+        var id = options.id;
+
+        /*var tmdbIds = [
+            [id, "Original", true],
+            [68724, "Movie 2"]
+        ];
+        page.options.createMultiOpt("tmdbId" + id, "Movie", tmdbIds, function(tmdbid) {
+            page.flush();
+            p(tmdbid + " " + id);
+            options.id = tmdbid;
+            loadMovieView(page, options);
+        });*/
+
+        loadMovieView(page, options);
+    }
+
+    function loadMovieView(page, options) {
         page.metadata.background = plugin.path + "views/img/background.png";
 
         var id = options.id;
@@ -1240,15 +1280,15 @@
             if (item1) {
                 var cast = [];
                 var crew = [];
-                var director = "";
+                var directors = "";
                 var writers = "";
 
                 if (service.crew) {
                     for (var i in item1.crew) {
                         var person = item1.crew[i];
 
-                        if (person.department == "Directing" && director == "")
-                            director = person.name;
+                        if (person.department == "Directing" && directors.indexOf(person.name) == -1)
+                            directors += person.name + ", ";
 
                         if (person.department == "Writing" && writers.indexOf(person.name) == -1)
                             writers += person.name + ", ";
@@ -1267,6 +1307,9 @@
                 }
 
                 page.metadata.progress = 40;
+
+                if (directors != "")
+                    directors = directors.slice(0, directors.length - 2);
 
                 if (writers != "")
                     writers = writers.slice(0, writers.length - 2);
@@ -1302,10 +1345,10 @@
 
         page.metadata.description = data.overview;
 
-        if (director)
-            page.appendPassiveItem("label", new showtime.RichText(director), { title: "Director: " });
+        if (directors)
+            page.appendPassiveItem("label", new showtime.RichText(directors), { title: "Director(s): " });
         if (writers)
-            page.appendPassiveItem("label", new showtime.RichText(writers), { title: "Writers: " });
+            page.appendPassiveItem("label", new showtime.RichText(writers), { title: "Writer(s): " });
         if (genres)
             page.appendPassiveItem("label", new showtime.RichText(genres), { title: "Genres: " });
         if (data.budget)
@@ -1377,6 +1420,10 @@
                 }
 
                 page.appendPassiveItem("list", collection, { title: "Collection" });
+
+                page.options.createAction("viewCollectionImages", "View Collection images", function() {
+                    page.redirect(PREFIX + ":collection:images:" + data.belongs_to_collection.id);
+                });
             }
         }
 
@@ -1496,6 +1543,9 @@
 
             page.appendAction("navopen", "youtube:feed:" + escape("https://gdata.youtube.com/feeds/api/videos?q=" + q), true, { title: "View more", subtitle: "Youtube", image: plugin.path + "img/youtube.png" });
 
+            // send title to Showtime searcher so we can search in another apps/hdd/share
+            page.appendAction("navopen", "search:" + q, true, { title: "Search", subtitle: "In Showtime", image: plugin.path + "views/img/search.png" });
+
             if (service.searchSource1 && service.searchSource1 != "")
                 page.appendAction("navopen", "navi-x:playlist:playlist:" + escape(service.searchSource1 + encodeURIComponent(q)), true, { title: "Searcher #1", image: plugin.path + "views/img/search.png" });
             if (service.searchSource2 && service.searchSource2 != "")
@@ -1545,16 +1595,10 @@
         page.loading = false;
     });
 
-    plugin.addURI(PREFIX + ":movie:images:(.*)", function (page, tmdbid) {
-        page.type = "directory";
-        page.contents = "items";
-        page.loading = false;
-
+    function showImages(page, images) {
         var configuration = api.getData("configuration");
         var base_url = configuration.images.secure_base_url;
         var size = "original";
-
-        var images = api.getData("movie", tmdbid, "images");
 
         if (images && images.backdrops) {
             var backgrounds = [];
@@ -1579,6 +1623,28 @@
                 });
             }
         }
+    }
+
+    plugin.addURI(PREFIX + ":movie:images:(.*)", function (page, tmdbid) {
+        page.type = "directory";
+        page.contents = "items";
+        page.loading = false;
+
+        var images = api.getData("movie", tmdbid, "images");
+
+        showImages(page, images);
+
+        page.loading = false;
+    });
+
+    plugin.addURI(PREFIX + ":collection:images:(.*)", function (page, collectionId) {
+        page.type = "directory";
+        page.contents = "items";
+        page.loading = false;
+
+        var images = api.getData("collection", collectionId, "images");
+
+        showImages(page, images);
 
         page.loading = false;
     });
@@ -1593,12 +1659,20 @@
         page.metadata.progress = 0;
 
         options = showtime.JSONDecode(unescape(options));
+
+        t("Options:")
+        t(options);
+
         var query = unescape(options.query);
         var id = null;
         var args = {};
         var mode = options.mode;
+        var year = options.year;
+        args.req = {};
+        if (year)
+            args.req.year = year;
         if (mode == 0) {
-            args.id = api.searchMovie(query);
+            args.id = api.searchMovie(query, year);
 
             if (!args.id) {
                 page.error("No movies found for the title given.");
