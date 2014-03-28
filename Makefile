@@ -1,10 +1,9 @@
-
 PLUGINS= \
 	channel9.zip \
 	watchtv.zip \
 	muzu.tv.zip \
 	khanacademy.zip \
-	videocopilot.zip \
+	videoco!pilot.zip \
 	gametrailers.zip \
 	navi-x.zip \
 	oceanus.zip \
